@@ -6,6 +6,7 @@ import { DiscordClientInterface } from "@ai16z/client-discord";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
 import { FarcasterAgentClient } from "@ai16z/client-farcaster";
+import { CodelightTwitterClientInterface } from "@ai16z/client-twitter-codelight";
 import {
     AgentRuntime,
     CacheManager,
@@ -50,6 +51,7 @@ import path from "path";
 import readline from "readline";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
+import { codeLightCharacter } from "../codelight.character";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -345,6 +347,13 @@ export async function initializeClients(
         clients.push(farcasterClients);
     }
 
+    // TODO: Codelight - make a custom client for codelight
+    if (clientTypes.includes("codelight_twitter")) {
+        const codelightClients =
+            await CodelightTwitterClientInterface.start(runtime);
+        clients.push(codelightClients);
+    }
+
     if (character.plugins?.length > 0) {
         for (const plugin of character.plugins) {
             if (plugin.clients) {
@@ -518,7 +527,8 @@ const startAgents = async () => {
 
     let charactersArg = args.characters || args.character;
 
-    let characters = [defaultCharacter];
+    // let characters = [defaultCharacter];
+    let characters = [codeLightCharacter];
 
     if (charactersArg) {
         characters = await loadCharacters(charactersArg);
