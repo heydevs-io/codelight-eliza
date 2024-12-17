@@ -617,6 +617,9 @@ export enum Clients {
     LENS = "lens",
     AUTO = "auto",
     SLACK = "slack",
+
+    // TODO: Codelight - make a custom client for codelight
+    CODELIGHT_TWITTER = "codelight_twitter",
 }
 
 export interface IAgentConfig {
@@ -755,7 +758,6 @@ export type Character = {
         slack?: {
             shouldIgnoreBotMessages?: boolean;
             shouldIgnoreDirectMessages?: boolean;
-
         };
     };
 
@@ -777,7 +779,7 @@ export type Character = {
     /** Optional NFT prompt */
     nft?: {
         prompt: string;
-    }
+    };
 };
 
 /**

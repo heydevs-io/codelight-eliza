@@ -7,6 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
+import { CodelightTwitterClientInterface } from "@ai16z/client-twitter-codelight";
 import {
     AgentRuntime,
     CacheManager,
@@ -58,6 +59,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
+import { codeLightCharacter } from "../codelight.character";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -396,6 +398,13 @@ export async function initializeClients(
         if (slackClient) clients.push(slackClient);
     }
 
+    // TODO: Codelight - make a custom client for codelight
+    if (clientTypes.includes("codelight_twitter")) {
+        const codelightClients =
+            await CodelightTwitterClientInterface.start(runtime);
+        clients.push(codelightClients);
+    }
+
     if (character.plugins?.length > 0) {
         for (const plugin of character.plugins) {
             // if plugin has clients, add those..
@@ -633,7 +642,8 @@ const startAgents = async () => {
 
     let charactersArg = args.characters || args.character;
 
-    let characters = [defaultCharacter];
+    // let characters = [defaultCharacter];
+    let characters = [codeLightCharacter];
 
     if (charactersArg) {
         characters = await loadCharacters(charactersArg);
@@ -648,9 +658,9 @@ const startAgents = async () => {
     }
 
     // upload some agent functionality into directClient
-    directClient.startAgent = async character => {
-      // wrap it so we don't have to inject directClient later
-      return startAgent(character, directClient)
+    directClient.startAgent = async (character) => {
+        // wrap it so we don't have to inject directClient later
+        return startAgent(character, directClient);
     };
     directClient.start(serverPort);
 
