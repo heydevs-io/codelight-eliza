@@ -205,6 +205,9 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
+    /**
+     * @deprecated - for Codelight use-case, use the @handleTweetV2 below
+     */
     private async handleTweet({
         tweet,
         message,
@@ -711,15 +714,15 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
-    async handleTwitterInteractionsV2() {
+    async handleTwitterInteractionsV2(username: string) {
         elizaLogger.log("Checking Twitter interactions");
 
         // const twitterUsername = this.client.profile.username;
-        const godTwitterUsername = "god";
+
         try {
             const tweetCandidates =
                 await this.client.fetchHomeTimelineByUsername(
-                    godTwitterUsername,
+                    username,
                     20 // TODO: not sure it works
                 );
 
@@ -814,9 +817,113 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
+    async handleTwitterMentionInteractions(
+        targetInteractUsernameList: string[]
+    ) {
+        elizaLogger.log("Checking Twitter mentions interactions");
+
+        const twitterUsername = this.client.profile.username;
+
+        try {
+            // Check for mentions
+            const tweetCandidates = (
+                await this.client.fetchSearchTweets(
+                    `@${twitterUsername}`,
+                    20,
+                    SearchMode.Latest
+                )
+            ).tweets;
+
+            const filteredTweetCandidates = tweetCandidates.filter((tweet) =>
+                targetInteractUsernameList.includes(tweet.username)
+            );
+
+            // de-duplicate tweetCandidates with a set
+            const uniqueTweetCandidates = [...new Set(filteredTweetCandidates)];
+
+            // for each tweet candidate, handle the tweet
+            for (const tweet of uniqueTweetCandidates) {
+                const isNewTweet =
+                    !this.client.lastCheckedTweetId ||
+                    BigInt(tweet.id) > this.client.lastCheckedTweetId;
+
+                if (isNewTweet) {
+                    // Generate the tweetId UUID the same way it's done in handleTweetV2
+                    const tweetId = stringToUuid(
+                        tweet.id + "-" + this.runtime.agentId
+                    );
+
+                    // Check if we've already processed this tweet
+                    const existingResponse =
+                        await this.runtime.messageManager.getMemoryById(
+                            tweetId
+                        );
+
+                    if (existingResponse) {
+                        elizaLogger.log(
+                            `Already responded to tweet ${tweet.id}, skipping`
+                        );
+                        continue;
+                    }
+                    elizaLogger.log("New Tweet found", tweet.permanentUrl);
+
+                    const roomId = stringToUuid(
+                        tweet.conversationId + "-" + this.runtime.agentId
+                    );
+
+                    const userIdUUID =
+                        tweet.userId === this.client.profile.id
+                            ? this.runtime.agentId
+                            : stringToUuid(tweet.userId!);
+
+                    await this.runtime.ensureConnection(
+                        userIdUUID,
+                        roomId,
+                        tweet.username,
+                        tweet.name,
+                        "twitter"
+                    );
+
+                    const thread = await this.buildConversationThread(
+                        tweet,
+                        10
+                    );
+
+                    const message = {
+                        content: { text: tweet.text },
+                        agentId: this.runtime.agentId,
+                        userId: userIdUUID,
+                        roomId,
+                    };
+
+                    await this.handleTweetV2({
+                        tweet,
+                        message,
+                        thread,
+                    });
+
+                    // Update the last checked tweet ID after processing each tweet
+                    this.client.lastCheckedTweetId = BigInt(tweet.id);
+                }
+            }
+
+            // Save the latest checked tweet ID to the file
+            await this.client.cacheLatestCheckedTweetId();
+
+            elizaLogger.log("Finished checking Twitter mentions interactions");
+        } catch (error) {
+            elizaLogger.error(
+                "Error handling Twitter mentions interactions:",
+                error
+            );
+        }
+    }
+
     async startV2() {
         const handleTwitterInteractionsLoopV2 = () => {
-            this.handleTwitterInteractionsV2();
+            // TODO: handle multiple usernames
+            const godTwitterUsername = "god";
+            this.handleTwitterInteractionsV2(godTwitterUsername);
             setTimeout(
                 handleTwitterInteractionsLoopV2,
                 Number(
@@ -824,6 +931,25 @@ export class CodelightTwitterInteractionClient {
                 ) * 1000 // Default to 2 minutes
             );
         };
+
+        // const targetInteractUsernameList =
+        //     process.env.TWITTER_INTERACT_TARGET_USERNAME_LIST?.split(",").map(
+        //         (username) => username.trim()
+        //     );
+
+        // const handleTwitterMentionInteractionsLoop = () => {
+        //     this.handleTwitterMentionInteractions(targetInteractUsernameList);
+        //     setTimeout(
+        //         handleTwitterMentionInteractionsLoop,
+        //         Number(
+        //             this.runtime.getSetting("TWITTER_POLL_INTERVAL") || 120
+        //         ) * 1000 // Default to 2 minutes
+        //     );
+        // };
+
         handleTwitterInteractionsLoopV2();
+        // if (targetInteractUsernameList?.length > 0) {
+        //     handleTwitterMentionInteractionsLoop();
+        // }
     }
 }
