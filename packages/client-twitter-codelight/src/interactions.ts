@@ -817,9 +817,7 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
-    async handleTwitterMentionInteractions(
-        targetInteractUsernameList: string[]
-    ) {
+    async handleTwitterMentionInteractions(excludeUsernameList: string[]) {
         elizaLogger.log("Checking Twitter mentions interactions");
 
         const twitterUsername = this.client.profile.username;
@@ -834,8 +832,8 @@ export class CodelightTwitterInteractionClient {
                 )
             ).tweets;
 
-            const filteredTweetCandidates = tweetCandidates.filter((tweet) =>
-                targetInteractUsernameList.includes(tweet.username)
+            const filteredTweetCandidates = tweetCandidates.filter(
+                (tweet) => !excludeUsernameList.includes(tweet.username)
             );
 
             // de-duplicate tweetCandidates with a set
@@ -920,9 +918,9 @@ export class CodelightTwitterInteractionClient {
     }
 
     async startV2() {
+        const godTwitterUsername = "god";
         const handleTwitterInteractionsLoopV2 = () => {
             // TODO: handle multiple usernames
-            const godTwitterUsername = "god";
             this.handleTwitterInteractionsV2(godTwitterUsername);
             setTimeout(
                 handleTwitterInteractionsLoopV2,
@@ -932,24 +930,18 @@ export class CodelightTwitterInteractionClient {
             );
         };
 
-        // const targetInteractUsernameList =
-        //     process.env.TWITTER_INTERACT_TARGET_USERNAME_LIST?.split(",").map(
-        //         (username) => username.trim()
-        //     );
-
-        // const handleTwitterMentionInteractionsLoop = () => {
-        //     this.handleTwitterMentionInteractions(targetInteractUsernameList);
-        //     setTimeout(
-        //         handleTwitterMentionInteractionsLoop,
-        //         Number(
-        //             this.runtime.getSetting("TWITTER_POLL_INTERVAL") || 120
-        //         ) * 1000 // Default to 2 minutes
-        //     );
-        // };
+        const handleTwitterMentionInteractionsLoop = () => {
+            const excludeUsernameList = [godTwitterUsername];
+            this.handleTwitterMentionInteractions(excludeUsernameList);
+            setTimeout(
+                handleTwitterMentionInteractionsLoop,
+                Number(
+                    this.runtime.getSetting("TWITTER_POLL_INTERVAL") || 120
+                ) * 1000 // Default to 2 minutes
+            );
+        };
 
         handleTwitterInteractionsLoopV2();
-        // if (targetInteractUsernameList?.length > 0) {
-        //     handleTwitterMentionInteractionsLoop();
-        // }
+        handleTwitterMentionInteractionsLoop();
     }
 }
