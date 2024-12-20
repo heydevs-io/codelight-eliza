@@ -13,7 +13,7 @@ class TwitterManager {
     constructor(runtime: IAgentRuntime) {
         this.client = new ClientBase(runtime);
         // TODO: Codelight - re-check if we need this
-        // this.post = new TwitterPostClient(this.client, runtime);
+        this.post = new CodelightTwitterPostClient(this.client, runtime);
         // this.search = new TwitterSearchClient(this.client, runtime); // don't start the search client by default
         // this searches topics from character file, but kind of violates consent of random users
         // burns your rate limit and can get your account banned
@@ -35,7 +35,7 @@ export const CodelightTwitterClientInterface: Client = {
 
         await manager.client.init();
 
-        // await manager.post.start();
+        await manager.post.start();
 
         await manager.interaction.startV2();
 
