@@ -46,7 +46,8 @@ import { storyPlugin } from "@ai16z/plugin-story";
 import { flowPlugin } from "@ai16z/plugin-flow";
 import { imageGenerationPlugin } from "@ai16z/plugin-image-generation";
 import { multiversxPlugin } from "@ai16z/plugin-multiversx";
-import { nearPlugin } from "@ai16z/plugin-near";
+// TODO: Codelight - Disable Near for for image upload
+// import { nearPlugin } from "@ai16z/plugin-near";
 import { nftGenerationPlugin } from "@ai16z/plugin-nft-generation";
 import { createNodePlugin } from "@ai16z/plugin-node";
 import { solanaPlugin } from "@ai16z/plugin-solana";
@@ -400,9 +401,15 @@ export async function initializeClients(
 
     // TODO: Codelight - make a custom client for codelight
     if (clientTypes.includes("codelight_twitter")) {
-        const codelightClients =
+        const codelightTwitterClient =
             await CodelightTwitterClientInterface.start(runtime);
-        clients.push(codelightClients);
+
+        if (codelightTwitterClient) {
+            clients.codelight_twitter = codelightTwitterClient;
+            (codelightTwitterClient as any).enableSearch = !isFalsish(
+                getSecret(character, "TWITTER_SEARCH_ENABLE")
+            );
+        }
     }
 
     if (character.plugins?.length > 0) {
@@ -500,11 +507,12 @@ export async function createAgent(
                 !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
                 ? solanaPlugin
                 : null,
-            (getSecret(character, "NEAR_ADDRESS") ||
-                getSecret(character, "NEAR_WALLET_PUBLIC_KEY")) &&
-            getSecret(character, "NEAR_WALLET_SECRET_KEY")
-                ? nearPlugin
-                : null,
+            // TODO: Codelight - Disable Near for for image upload
+            // (getSecret(character, "NEAR_ADDRESS") ||
+            //     getSecret(character, "NEAR_WALLET_PUBLIC_KEY")) &&
+            // getSecret(character, "NEAR_WALLET_SECRET_KEY")
+            //     ? nearPlugin
+            //     : null,
             getSecret(character, "EVM_PUBLIC_KEY") ||
             (getSecret(character, "WALLET_PUBLIC_KEY") &&
                 getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))

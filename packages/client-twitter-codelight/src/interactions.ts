@@ -715,7 +715,7 @@ export class CodelightTwitterInteractionClient {
     }
 
     async handleTwitterInteractionsV2(username: string) {
-        elizaLogger.log("Checking Twitter interactions");
+        elizaLogger.log(`Checking Twitter '${username}' interactions`);
 
         // const twitterUsername = this.client.profile.username;
 
@@ -811,9 +811,14 @@ export class CodelightTwitterInteractionClient {
             // Save the latest checked tweet ID to the file
             await this.client.cacheLatestCheckedTweetId();
 
-            elizaLogger.log("Finished checking Twitter interactions");
+            elizaLogger.log(
+                `Finished checking Twitter '${username}' interactions`
+            );
         } catch (error) {
-            elizaLogger.error("Error handling Twitter interactions:", error);
+            elizaLogger.error(
+                `Error handling Twitter '${username}' interactions:`,
+                error
+            );
         }
     }
 
@@ -838,6 +843,10 @@ export class CodelightTwitterInteractionClient {
 
             // de-duplicate tweetCandidates with a set
             const uniqueTweetCandidates = [...new Set(filteredTweetCandidates)];
+
+            elizaLogger.debug(
+                `Processing ${uniqueTweetCandidates.length} mentions tweets`
+            );
 
             // for each tweet candidate, handle the tweet
             for (const tweet of uniqueTweetCandidates) {
@@ -918,10 +927,32 @@ export class CodelightTwitterInteractionClient {
     }
 
     async startV2() {
-        const godTwitterUsername = "god";
-        const handleTwitterInteractionsLoopV2 = () => {
+        const DEFAULT_TARGET_TWITTER_USERNAME_LIST = [
+            "aixbt_agent",
+            "dolos_diary",
+            "luna_virtuals",
+            "vader_ai_",
+            "SimulacrumAI",
+            "0xHarmonybot",
+            "clankeronbase",
+            "luminousbase",
+            "anoncast_",
+            "henlokart",
+            "freysa_ai",
+            "agent_algo",
+            "god",
+        ];
+
+        const targetTwitterUsernameList =
+            process.env.TARGET_TWITTER_USERNAME_LIST?.split(",") ||
+            DEFAULT_TARGET_TWITTER_USERNAME_LIST;
+
+        const handleTwitterInteractionsLoopV2 = async () => {
             // TODO: handle multiple usernames
-            this.handleTwitterInteractionsV2(godTwitterUsername);
+            for (const username of targetTwitterUsernameList) {
+                await this.handleTwitterInteractionsV2(username);
+                await Promise.resolve(setTimeout(() => {}, 5000));
+            }
             setTimeout(
                 handleTwitterInteractionsLoopV2,
                 Number(
@@ -931,7 +962,9 @@ export class CodelightTwitterInteractionClient {
         };
 
         const handleTwitterMentionInteractionsLoop = () => {
-            const excludeUsernameList = [godTwitterUsername];
+            const excludeUsernameList = JSON.parse(
+                JSON.stringify(targetTwitterUsernameList)
+            );
             this.handleTwitterMentionInteractions(excludeUsernameList);
             setTimeout(
                 handleTwitterMentionInteractionsLoop,
