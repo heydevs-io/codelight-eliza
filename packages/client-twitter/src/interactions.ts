@@ -2,7 +2,7 @@ import { SearchMode, Tweet } from "agent-twitter-client";
 import {
     composeContext,
     generateMessageResponse,
-    generateShouldRespond,
+    // generateShouldRespond,
     messageCompletionFooter,
     shouldRespondFooter,
     Content,
@@ -382,40 +382,41 @@ export class TwitterInteractionClient {
             this.client.saveRequestMessage(message, state);
         }
 
-        // 1. Get the raw target users string from settings
-        const targetUsersStr = this.runtime.getSetting("TWITTER_TARGET_USERS");
+        // TODO: Codelight - reimplement this for Codelight use cases
+        // // 1. Get the raw target users string from settings
+        // const targetUsersStr = this.runtime.getSetting("TWITTER_TARGET_USERS");
 
-        // 2. Process the string to get valid usernames
-        const validTargetUsersStr =
-            targetUsersStr && targetUsersStr.trim()
-                ? targetUsersStr
-                      .split(",") // Split by commas: "user1,user2" -> ["user1", "user2"]
-                      .map((u) => u.trim()) // Remove whitespace: [" user1 ", "user2 "] -> ["user1", "user2"]
-                      .filter((u) => u.length > 0)
-                      .join(",")
-                : "";
+        // // 2. Process the string to get valid usernames
+        // const validTargetUsersStr =
+        //     targetUsersStr && targetUsersStr.trim()
+        //         ? targetUsersStr
+        //               .split(",") // Split by commas: "user1,user2" -> ["user1", "user2"]
+        //               .map((u) => u.trim()) // Remove whitespace: [" user1 ", "user2 "] -> ["user1", "user2"]
+        //               .filter((u) => u.length > 0)
+        //               .join(",")
+        //         : "";
 
-        const shouldRespondContext = composeContext({
-            state,
-            template:
-                this.runtime.character.templates?.twitterShouldRespondTemplate?.(
-                    validTargetUsersStr
-                ) ||
-                this.runtime.character?.templates?.shouldRespondTemplate ||
-                twitterShouldRespondTemplate(validTargetUsersStr),
-        });
+        // const shouldRespondContext = composeContext({
+        //     state,
+        //     template:
+        //         this.runtime.character.templates?.twitterShouldRespondTemplate?.(
+        //             validTargetUsersStr
+        //         ) ||
+        //         this.runtime.character?.templates?.shouldRespondTemplate ||
+        //         twitterShouldRespondTemplate(validTargetUsersStr),
+        // });
 
-        const shouldRespond = await generateShouldRespond({
-            runtime: this.runtime,
-            context: shouldRespondContext,
-            modelClass: ModelClass.MEDIUM,
-        });
+        // const shouldRespond = await generateShouldRespond({
+        //     runtime: this.runtime,
+        //     context: shouldRespondContext,
+        //     modelClass: ModelClass.MEDIUM,
+        // });
 
-        // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
-        if (shouldRespond !== "RESPOND") {
-            elizaLogger.log("Not responding to message");
-            return { text: "Response Decision:", action: shouldRespond };
-        }
+        // // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
+        // if (shouldRespond !== "RESPOND") {
+        //     elizaLogger.log("Not responding to message");
+        //     return { text: "Response Decision:", action: shouldRespond };
+        // }
 
         const context = composeContext({
             state,
@@ -627,5 +628,273 @@ export class TwitterInteractionClient {
         });
 
         return thread;
+    }
+
+    /**
+     * ------------------------- Codelight custom code -------------------------
+     */
+
+    async handleTwitterInteractionsV2(username: string) {
+        elizaLogger.log(`Checking Twitter '${username}' interactions`);
+
+        // const twitterUsername = this.client.profile.username;
+
+        try {
+            const tweetCandidates =
+                await this.client.fetchHomeTimelineByUsername(
+                    username,
+                    20 // TODO: not sure it works
+                );
+
+            // // Check for mentions
+            // const tweetCandidates = (
+            //     await this.client.fetchSearchTweets(
+            //         // `@${twitterUsername}`,
+            //         `@${this.client.profile.username}`,
+            //         20,
+            //         SearchMode.Latest
+            //     )
+            // ).tweets;
+
+            // de-duplicate tweetCandidates with a set
+            // const uniqueTweetCandidates = [...new Set(tweetCandidates)];
+            const uniqueTweetCandidates = [...new Set(tweetCandidates)].slice(
+                0,
+                1
+            );
+
+            // for each tweet candidate, handle the tweet
+            for (const tweet of uniqueTweetCandidates) {
+                if (
+                    !this.client.lastCheckedTweetId ||
+                    BigInt(tweet.id) > this.client.lastCheckedTweetId
+                ) {
+                    // Generate the tweetId UUID the same way it's done in handleTweetV2
+                    const tweetId = stringToUuid(
+                        tweet.id + "-" + this.runtime.agentId
+                    );
+
+                    // Check if we've already processed this tweet
+                    const existingResponse =
+                        await this.runtime.messageManager.getMemoryById(
+                            tweetId
+                        );
+
+                    if (existingResponse) {
+                        elizaLogger.log(
+                            `Already responded to tweet ${tweet.id}, skipping`
+                        );
+                        continue;
+                    }
+                    elizaLogger.log("New Tweet found", tweet.permanentUrl);
+
+                    const roomId = stringToUuid(
+                        tweet.conversationId + "-" + this.runtime.agentId
+                    );
+
+                    const userIdUUID =
+                        tweet.userId === this.client.profile.id
+                            ? this.runtime.agentId
+                            : stringToUuid(tweet.userId!);
+
+                    await this.runtime.ensureConnection(
+                        userIdUUID,
+                        roomId,
+                        tweet.username,
+                        tweet.name,
+                        "twitter"
+                    );
+
+                    const thread = await this.buildConversationThread(
+                        tweet,
+                        10
+                    );
+
+                    const message = {
+                        content: { text: tweet.text },
+                        agentId: this.runtime.agentId,
+                        userId: userIdUUID,
+                        roomId,
+                    };
+
+                    await this.handleTweet({
+                        tweet,
+                        message,
+                        thread,
+                    });
+
+                    // Update the last checked tweet ID after processing each tweet
+                    this.client.lastCheckedTweetId = BigInt(tweet.id);
+                }
+            }
+
+            // Save the latest checked tweet ID to the file
+            await this.client.cacheLatestCheckedTweetId();
+
+            elizaLogger.log(
+                `Finished checking Twitter '${username}' interactions`
+            );
+        } catch (error) {
+            elizaLogger.error(
+                `Error handling Twitter '${username}' interactions:`,
+                error
+            );
+        }
+    }
+
+    async handleTwitterMentionInteractions(excludeUsernameList: string[]) {
+        elizaLogger.log("Checking Twitter mentions interactions");
+
+        const twitterUsername = this.client.profile.username;
+
+        try {
+            // Check for mentions
+            const tweetCandidates = (
+                await this.client.fetchSearchTweets(
+                    `@${twitterUsername}`,
+                    20,
+                    SearchMode.Latest
+                )
+            ).tweets;
+
+            const filteredTweetCandidates = tweetCandidates.filter(
+                (tweet) => !excludeUsernameList.includes(tweet.username)
+            );
+
+            // de-duplicate tweetCandidates with a set
+            const uniqueTweetCandidates = [...new Set(filteredTweetCandidates)];
+
+            elizaLogger.debug(
+                `Processing ${uniqueTweetCandidates.length} mentions tweets`
+            );
+
+            // for each tweet candidate, handle the tweet
+            for (const tweet of uniqueTweetCandidates) {
+                const isNewTweet =
+                    !this.client.lastCheckedTweetId ||
+                    BigInt(tweet.id) > this.client.lastCheckedTweetId;
+
+                if (isNewTweet) {
+                    // Generate the tweetId UUID the same way it's done in handleTweetV2
+                    const tweetId = stringToUuid(
+                        tweet.id + "-" + this.runtime.agentId
+                    );
+
+                    // Check if we've already processed this tweet
+                    const existingResponse =
+                        await this.runtime.messageManager.getMemoryById(
+                            tweetId
+                        );
+
+                    if (existingResponse) {
+                        elizaLogger.log(
+                            `Already responded to tweet ${tweet.id}, skipping`
+                        );
+                        continue;
+                    }
+                    elizaLogger.log("New Tweet found", tweet.permanentUrl);
+
+                    const roomId = stringToUuid(
+                        tweet.conversationId + "-" + this.runtime.agentId
+                    );
+
+                    const userIdUUID =
+                        tweet.userId === this.client.profile.id
+                            ? this.runtime.agentId
+                            : stringToUuid(tweet.userId!);
+
+                    await this.runtime.ensureConnection(
+                        userIdUUID,
+                        roomId,
+                        tweet.username,
+                        tweet.name,
+                        "twitter"
+                    );
+
+                    const thread = await this.buildConversationThread(
+                        tweet,
+                        10
+                    );
+
+                    const message = {
+                        content: { text: tweet.text },
+                        agentId: this.runtime.agentId,
+                        userId: userIdUUID,
+                        roomId,
+                    };
+
+                    await this.handleTweet({
+                        tweet,
+                        message,
+                        thread,
+                    });
+
+                    // Update the last checked tweet ID after processing each tweet
+                    this.client.lastCheckedTweetId = BigInt(tweet.id);
+                }
+            }
+
+            // Save the latest checked tweet ID to the file
+            await this.client.cacheLatestCheckedTweetId();
+
+            elizaLogger.log("Finished checking Twitter mentions interactions");
+        } catch (error) {
+            elizaLogger.error(
+                "Error handling Twitter mentions interactions:",
+                error
+            );
+        }
+    }
+
+    async startV2() {
+        const DEFAULT_TARGET_TWITTER_USERNAME_LIST = [
+            "aixbt_agent",
+            "dolos_diary",
+            "luna_virtuals",
+            "vader_ai_",
+            "SimulacrumAI",
+            "0xHarmonybot",
+            "clankeronbase",
+            "luminousbase",
+            "anoncast_",
+            "henlokart",
+            "freysa_ai",
+            "agent_algo",
+            "god",
+        ];
+
+        const targetTwitterUsernameList =
+            process.env.TARGET_TWITTER_USERNAME_LIST?.split(",") ||
+            DEFAULT_TARGET_TWITTER_USERNAME_LIST;
+
+        const handleTwitterInteractionsLoopV2 = async () => {
+            // TODO: handle multiple usernames
+            for (const username of targetTwitterUsernameList) {
+                await this.handleTwitterInteractionsV2(username);
+                await Promise.resolve(setTimeout(() => {}, 5000));
+            }
+            setTimeout(
+                handleTwitterInteractionsLoopV2,
+                Number(
+                    this.runtime.getSetting("TWITTER_POLL_INTERVAL") || 120
+                ) * 1000 // Default to 2 minutes
+            );
+        };
+
+        const handleTwitterMentionInteractionsLoop = () => {
+            const excludeUsernameList = JSON.parse(
+                JSON.stringify(targetTwitterUsernameList)
+            );
+            this.handleTwitterMentionInteractions(excludeUsernameList);
+            setTimeout(
+                handleTwitterMentionInteractionsLoop,
+                Number(
+                    this.runtime.getSetting("TWITTER_POLL_INTERVAL") || 120
+                ) * 1000 // Default to 2 minutes
+            );
+        };
+
+        handleTwitterInteractionsLoopV2();
+        handleTwitterMentionInteractionsLoop();
     }
 }

@@ -16,6 +16,8 @@
         "clean": "bash ./scripts/clean.sh",
         "docker:build": "bash ./scripts/docker.sh build",
         "docker:run": "bash ./scripts/docker.sh run",
+        "docker:codelight:build": "bash ./scripts/docker.codelight.sh build",
+        "docker:codelight:run": "bash ./scripts/docker.codelight.sh run",
         "docker:bash": "bash ./scripts/docker.sh bash",
         "docker:start": "bash ./scripts/docker.sh start",
         "docker": "pnpm docker:build && pnpm docker:run && pnpm docker:bash",

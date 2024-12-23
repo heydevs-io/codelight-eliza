@@ -185,7 +185,9 @@ export class TwitterPostClient {
         } else {
             elizaLogger.log("Action processing loop disabled by configuration");
         }
-        generateNewTweetLoop();
+
+        // TODO: Codelight - Now it running twice - need to fix
+        // generateNewTweetLoop();
     }
 
     constructor(client: ClientBase, runtime: IAgentRuntime) {
