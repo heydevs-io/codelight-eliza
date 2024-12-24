@@ -9,7 +9,7 @@ fi
 # Execute the corresponding command based on the argument
 case "$1" in
 build)
-    docker build -t codelight-eliza -f Dockerfile.codelight .
+    docker build --platform linux/amd64 -t codelight-eliza -f Dockerfile.codelight .
     ;;
 run)
     # Add environment variables with defaults
