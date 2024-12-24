@@ -934,6 +934,25 @@ export interface IDatabaseAdapter {
     }): Promise<Relationship | null>;
 
     getRelationships(params: { userId: UUID }): Promise<Relationship[]>;
+
+    // Content Store methods
+    getContentStore?(params: {
+        agentId: UUID;
+        targetPlatform?: string;
+        status?: ContentStatus;
+        limit?: number;
+    }): Promise<ContentStore[]>;
+
+    createContentStore?(
+        content: Omit<ContentStore, "createdAt">
+    ): Promise<boolean>;
+
+    updateContentStore?(
+        id: UUID,
+        updates: Partial<ContentStore>
+    ): Promise<boolean>;
+
+    deleteContentStore?(id: UUID): Promise<boolean>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1238,4 +1257,28 @@ export interface ActionResponse {
 
 export interface ISlackService extends Service {
     client: any;
+}
+
+export enum ContentStatus {
+    PENDING = "pending",
+    PROCESSING = "processing",
+    COMPLETED = "completed",
+    FAILED = "failed",
+}
+
+export interface ContentStore {
+    id: UUID;
+    createdAt: number;
+    userId: UUID;
+    agentId: UUID;
+    source: "url" | "text";
+    sourceUrl?: string;
+    content: string;
+    metadata: Record<string, any>;
+    priority: number;
+    finishedAt?: number;
+    status: ContentStatus;
+    action: string;
+    targetPlatform: "twitter" | "telegram" | "discord" | "slack";
+    resultId?: string;
 }

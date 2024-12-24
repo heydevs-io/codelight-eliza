@@ -1,16 +1,22 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
+import { v4 } from "uuid";
 
 import {
     AgentRuntime,
+    ContentStatus,
     elizaLogger,
+    UUID,
     validateCharacterConfig,
 } from "@ai16z/eliza";
 
 import { REST, Routes } from "discord.js";
 
-export function createApiRouter(agents: Map<string, AgentRuntime>, directClient) {
+export function createApiRouter(
+    agents: Map<string, AgentRuntime>,
+    directClient
+) {
     const router = express.Router();
 
     router.use(cors());
@@ -109,6 +115,117 @@ export function createApiRouter(agents: Map<string, AgentRuntime>, directClient)
         } catch (error) {
             console.error("Error fetching guilds:", error);
             res.status(500).json({ error: "Failed to fetch guilds" });
+        }
+    });
+
+    router.get("/v1/agents/:agentId", async (req, res) => {
+        const agentId = req.params.agentId;
+        const agent = agents.values().next().value;
+
+        const agentInfo = await agent.databaseAdapter.getAccountById(
+            agentId as UUID
+        );
+
+        if (!agent) {
+            res.status(404).json({ error: "Agent not found" });
+            return;
+        }
+
+        res.json({
+            ...agentInfo,
+        });
+    });
+
+    router.post("/v1/content-store", async (req, res) => {
+        const {
+            agentId,
+            source,
+            sourceUrl,
+            content,
+            priority,
+            action,
+            targetPlatform,
+        } = req.body;
+
+        // Validate required fields
+        if (!agentId || !source || !action) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Missing required fields: agentId, source, and action are required",
+            });
+        }
+
+        // Validate targetPlatform
+        if (targetPlatform !== "twitter") {
+            return res.status(400).json({
+                success: false,
+                message: "targetPlatform must be 'twitter'",
+            });
+        }
+
+        // Validate action
+        if (action !== "twitter_post") {
+            return res.status(400).json({
+                success: false,
+                message: "action must be 'twitter_post'",
+            });
+        }
+
+        // Validate source
+        if (source !== "url" && source !== "text") {
+            return res.status(400).json({
+                success: false,
+                message: "source must be either 'url' or 'text'",
+            });
+        }
+
+        const agent = agents.get(agentId);
+        if (!agent) {
+            return res.status(404).json({
+                success: false,
+                message: "Agent not found",
+            });
+        }
+
+        try {
+            // Create content store item
+            const contentItem = {
+                id: v4() as UUID,
+                userId: agent.agentId,
+                agentId,
+                source,
+                sourceUrl,
+                content,
+                metadata: {},
+                priority: priority || 0,
+                status: ContentStatus.PENDING,
+                action,
+                targetPlatform,
+            };
+
+            // Store using database adapter
+            const success =
+                await agent.databaseAdapter.createContentStore(contentItem);
+
+            if (!success) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to store content",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Content stored successfully",
+                data: contentItem,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: "Failed to store content",
+                error: error.message,
+            });
         }
     });
 

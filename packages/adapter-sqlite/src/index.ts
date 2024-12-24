@@ -1,7 +1,11 @@
 export * from "./sqliteTables.ts";
 export * from "./sqlite_vec.ts";
 
-import { DatabaseAdapter, IDatabaseCacheAdapter } from "@ai16z/eliza";
+import {
+    DatabaseAdapter,
+    elizaLogger,
+    IDatabaseCacheAdapter,
+} from "@ai16z/eliza";
 import {
     Account,
     Actor,
@@ -11,6 +15,8 @@ import {
     type Memory,
     type Relationship,
     type UUID,
+    type ContentStore,
+    type ContentStatus,
 } from "@ai16z/eliza";
 import { Database } from "better-sqlite3";
 import { v4 } from "uuid";
@@ -704,6 +710,124 @@ export class SqliteDatabaseAdapter
             return true;
         } catch (error) {
             console.log("Error removing cache", error);
+            return false;
+        }
+    }
+
+    async getContentStore(params: {
+        agentId: UUID;
+        status?: ContentStatus;
+        targetPlatform?: string;
+        limit?: number;
+    }): Promise<ContentStore[]> {
+        let sql = "SELECT * FROM content_store WHERE agentId = ?";
+        const queryParams: any[] = [params.agentId];
+
+        if (params.status) {
+            sql += " AND status = ?";
+            queryParams.push(params.status);
+        }
+
+        if (params.targetPlatform) {
+            sql += " AND targetPlatform = ?";
+            queryParams.push(params.targetPlatform);
+        }
+
+        sql += " ORDER BY priority DESC, createdAt ASC";
+
+        if (params.limit) {
+            sql += " LIMIT ?";
+            queryParams.push(params.limit);
+        }
+
+        const rows = this.db.prepare(sql).all(...queryParams);
+
+        return rows.map((row: any) => ({
+            ...row,
+            metadata: JSON.parse(row.metadata),
+            finishedAt: row.finishedAt ? Number(row.finishedAt) : undefined,
+            createdAt: Number(row.createdAt),
+        }));
+    }
+
+    async createContentStore(
+        content: Omit<ContentStore, "createdAt">
+    ): Promise<boolean> {
+        try {
+            const sql = `
+                INSERT INTO content_store (
+                    id, userId, agentId, source, sourceUrl, content,
+                    metadata, priority, status, action, targetPlatform
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    content.id,
+                    content.userId,
+                    content.agentId,
+                    content.source,
+                    content.sourceUrl || null,
+                    content.content,
+                    JSON.stringify(content.metadata || {}),
+                    content.priority || 0,
+                    content.status,
+                    content.action,
+                    content.targetPlatform
+                );
+
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error creating content store:", error);
+            return false;
+        }
+    }
+
+    async updateContentStore(
+        id: UUID,
+        updates: Partial<ContentStore>
+    ): Promise<boolean> {
+        try {
+            const sets: string[] = [];
+            const values: any[] = [];
+
+            // Build dynamic SET clause
+            Object.entries(updates).forEach(([key, value]) => {
+                if (key === "metadata" && value) {
+                    sets.push(`${key} = ?`);
+                    values.push(JSON.stringify(value));
+                } else if (value !== undefined) {
+                    sets.push(`${key} = ?`);
+                    values.push(value);
+                }
+            });
+
+            if (sets.length === 0) return true;
+
+            const sql = `
+                UPDATE content_store
+                SET ${sets.join(", ")}
+                WHERE id = ?
+            `;
+
+            values.push(id);
+            this.db.prepare(sql).run(...values);
+
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error updating content store:", error);
+            return false;
+        }
+    }
+
+    async deleteContentStore(id: UUID): Promise<boolean> {
+        try {
+            const sql = "DELETE FROM content_store WHERE id = ?";
+            this.db.prepare(sql).run(id);
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error deleting content store:", error);
             return false;
         }
     }
