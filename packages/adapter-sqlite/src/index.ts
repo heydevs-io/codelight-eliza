@@ -17,6 +17,7 @@ import {
     type UUID,
     type ContentStore,
     type ContentStatus,
+    AgentInteractionTarget,
 } from "@ai16z/eliza";
 import { Database } from "better-sqlite3";
 import { v4 } from "uuid";
@@ -254,8 +255,8 @@ export class SqliteDatabaseAdapter
 
         let sql = `
             SELECT *, vec_distance_L2(embedding, ?) AS similarity
-            FROM memories 
-            WHERE type = ? 
+            FROM memories
+            WHERE type = ?
             AND roomId = ?`;
 
         if (params.unique) {
@@ -346,24 +347,24 @@ export class SqliteDatabaseAdapter
         // First get content text and calculate Levenshtein distance
         const sql = `
             WITH content_text AS (
-                SELECT 
+                SELECT
                     embedding,
                     json_extract(
                         json(content),
                         '$.' || ? || '.' || ?
                     ) as content_text
-                FROM memories 
+                FROM memories
                 WHERE type = ?
                 AND json_extract(
                     json(content),
                     '$.' || ? || '.' || ?
                 ) IS NOT NULL
             )
-            SELECT 
+            SELECT
                 embedding,
                 length(?) + length(content_text) - (
                     length(?) + length(content_text) - (
-                        length(replace(lower(?), lower(content_text), '')) + 
+                        length(replace(lower(?), lower(content_text), '')) +
                         length(replace(lower(content_text), lower(?), ''))
                     ) / 2
                 ) as levenshtein_score
@@ -828,6 +829,90 @@ export class SqliteDatabaseAdapter
             return true;
         } catch (error) {
             elizaLogger.error("Error deleting content store:", error);
+            return false;
+        }
+    }
+
+    async getAgentInteractionTargetByAgentId(params: {
+        agentId: UUID;
+    }): Promise<AgentInteractionTarget> {
+        const sql = `SELECT * FROM agent_interaction_targets WHERE agentId = ? LIMIT 1`;
+        const target = this.db
+            .prepare(sql)
+            .get(params.agentId) as AgentInteractionTarget;
+        return target;
+    }
+
+    async createAgentInteractionTarget(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: "twitter" | "telegram" | "discord" | "slack";
+    }): Promise<boolean> {
+        try {
+            const sql = `
+                INSERT INTO agent_interaction_targets
+                (id, agentId, targetUsernames, platform, createdAt)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    v4(),
+                    params.agentId,
+                    params.targetUsernames,
+                    params.platform
+                );
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error creating agent interaction target:",
+                error
+            );
+            return false;
+        }
+    }
+
+    async updateAgentInteractionTarget(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: "twitter" | "telegram" | "discord" | "slack";
+    }): Promise<boolean> {
+        try {
+            const sql = `
+                UPDATE agent_interaction_targets
+                SET targetUsernames = ?, platform = ?
+                WHERE agentId = ? AND platform = ?
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    params.targetUsernames,
+                    params.platform,
+                    params.agentId,
+                    params.platform
+                );
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error updating agent interaction target:",
+                error
+            );
+            return false;
+        }
+    }
+
+    async deleteAgentInteractionTarget(params: { id: UUID }): Promise<boolean> {
+        try {
+            const sql = `DELETE FROM agent_interaction_targets WHERE id = ?`;
+            this.db.prepare(sql).run(params.id);
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error deleting agent interaction target:",
+                error
+            );
             return false;
         }
     }

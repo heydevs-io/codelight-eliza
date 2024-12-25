@@ -14,6 +14,7 @@ import {
     stringToUuid,
     elizaLogger,
     getEmbeddingZeroVector,
+    UUID,
 } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
@@ -927,32 +928,63 @@ export class CodelightTwitterInteractionClient {
     }
 
     async startV2() {
-        const DEFAULT_TARGET_TWITTER_USERNAME_LIST = [
-            "aixbt_agent",
-            "dolos_diary",
-            "luna_virtuals",
-            "vader_ai_",
-            "SimulacrumAI",
-            "0xHarmonybot",
-            "clankeronbase",
-            "luminousbase",
-            "anoncast_",
-            "henlokart",
-            "freysa_ai",
-            "agent_algo",
-            "god",
-        ];
+        // const DEFAULT_TARGET_TWITTER_USERNAME_LIST = [
+        //     "aixbt_agent",
+        //     "dolos_diary",
+        //     "luna_virtuals",
+        //     "vader_ai_",
+        //     "SimulacrumAI",
+        //     "0xHarmonybot",
+        //     "clankeronbase",
+        //     "luminousbase",
+        //     "anoncast_",
+        //     "henlokart",
+        //     "freysa_ai",
+        //     "agent_algo",
+        //     "god",
+        // ];
 
-        const targetTwitterUsernameList =
-            process.env.TARGET_TWITTER_USERNAME_LIST?.split(",") ||
-            DEFAULT_TARGET_TWITTER_USERNAME_LIST;
+        // Check if the agent has an interaction target and create one if it doesn't
+        const targetInteractionEntity =
+            await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                {
+                    agentId: this.runtime.agentId,
+                }
+            );
+
+        if (!targetInteractionEntity) {
+            elizaLogger.debug(
+                `No interaction target found for agent ${this.runtime.agentId}`
+            );
+
+            // Create a new interaction target
+            await this.runtime.databaseAdapter.createAgentInteractionTarget({
+                agentId: this.runtime.agentId as UUID,
+                targetUsernames: "",
+                platform: "twitter",
+            });
+        }
 
         const handleTwitterInteractionsLoopV2 = async () => {
-            // TODO: handle multiple usernames
+            // Get the target usernames from the database and split them into an array
+            const targetInteractionEntity =
+                await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                    {
+                        agentId: this.runtime.agentId,
+                    }
+                );
+            const targetTwitterUsernameList =
+                targetInteractionEntity?.targetUsernames === ""
+                    ? []
+                    : targetInteractionEntity?.targetUsernames.split(",") || [];
+
+            // For each username, handle the interactions
             for (const username of targetTwitterUsernameList) {
                 await this.handleTwitterInteractionsV2(username);
                 await Promise.resolve(setTimeout(() => {}, 5000));
             }
+
+            // Set the interval to check for interactions
             setTimeout(
                 handleTwitterInteractionsLoopV2,
                 Number(
@@ -961,10 +993,21 @@ export class CodelightTwitterInteractionClient {
             );
         };
 
-        const handleTwitterMentionInteractionsLoop = () => {
+        const handleTwitterMentionInteractionsLoop = async () => {
+            // Get the target usernames from the database and split them into an array
+            const targetInteractionEntity =
+                await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                    {
+                        agentId: this.runtime.agentId,
+                    }
+                );
+            const targetTwitterUsernameList =
+                targetInteractionEntity?.targetUsernames.split(",") || [];
             const excludeUsernameList = JSON.parse(
                 JSON.stringify(targetTwitterUsernameList)
             );
+
+            // Set the interval to check for mentions
             this.handleTwitterMentionInteractions(excludeUsernameList);
             setTimeout(
                 handleTwitterMentionInteractionsLoop,

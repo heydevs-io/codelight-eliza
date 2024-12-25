@@ -953,6 +953,25 @@ export interface IDatabaseAdapter {
     ): Promise<boolean>;
 
     deleteContentStore?(id: UUID): Promise<boolean>;
+
+    // Agent Interaction Targets
+    getAgentInteractionTargetByAgentId?(params: {
+        agentId: UUID;
+    }): Promise<AgentInteractionTarget>;
+
+    createAgentInteractionTarget?(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: "twitter" | "telegram" | "discord" | "slack";
+    }): Promise<boolean>;
+
+    updateAgentInteractionTarget?(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: "twitter" | "telegram" | "discord" | "slack";
+    }): Promise<boolean>;
+
+    deleteAgentInteractionTarget?(params: { id: UUID }): Promise<boolean>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1281,4 +1300,13 @@ export interface ContentStore {
     action: string;
     targetPlatform: "twitter" | "telegram" | "discord" | "slack";
     resultId?: string;
+}
+
+export interface AgentInteractionTarget {
+    id: UUID;
+    createdAt: number;
+    agentId: UUID;
+    targetUsernames: string;
+    platform: "twitter" | "telegram" | "discord" | "slack";
+    status: "active" | "inactive";
 }

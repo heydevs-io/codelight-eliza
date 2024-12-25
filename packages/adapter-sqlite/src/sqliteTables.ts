@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS "cache" (
     PRIMARY KEY ("key", "agentId")
 );
 
+------------------ Note: Start of Codelight tables ------------------
+
 -- Table: content_store
 CREATE TABLE IF NOT EXISTS "content_store" (
     "id" TEXT PRIMARY KEY,
@@ -111,6 +113,18 @@ CREATE TABLE IF NOT EXISTS "content_store" (
     FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
     FOREIGN KEY ("agentId") REFERENCES "accounts"("id")
 );
+
+-- Table: agent_interaction_targets
+CREATE TABLE IF NOT EXISTS "agent_interaction_targets" (
+    "id" TEXT PRIMARY KEY,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "agentId" TEXT NOT NULL,
+    "targetUsernames" TEXT NOT NULL, -- Comma-separated usernames
+    "platform" TEXT NOT NULL DEFAULT 'twitter', -- For future platform extensibility
+    FOREIGN KEY ("agentId") REFERENCES "accounts"("id")
+);
+
+------------------ Note: End of Codelight tables ------------------
 
 -- Index: relationships_id_key
 CREATE UNIQUE INDEX IF NOT EXISTS "relationships_id_key" ON "relationships" ("id");

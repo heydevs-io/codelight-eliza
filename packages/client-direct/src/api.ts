@@ -132,7 +132,8 @@ export function createApiRouter(
         }
 
         res.json({
-            ...agentInfo,
+            success: true,
+            data: agentInfo,
         });
     });
 
@@ -225,6 +226,123 @@ export function createApiRouter(
                 success: false,
                 message: "Failed to store content",
                 error: error.message,
+            });
+        }
+    });
+
+    router.get("/v1/agents/:agentId/interaction-targets", async (req, res) => {
+        // Get first agent
+        const agent = agents.values().next().value as AgentRuntime;
+        const agentId = req.params.agentId;
+
+        // TODO (lau, Codelight): this code is always getting the first agent so we need to fix it later
+        if (!agent) {
+            res.status(404).json({ error: "Agent not found" });
+            return;
+        }
+
+        try {
+            const interactionTargetEntity =
+                await agent.databaseAdapter.getAgentInteractionTargetByAgentId({
+                    agentId: agentId as UUID,
+                });
+
+            if (!interactionTargetEntity) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Interaction target not found",
+                });
+            }
+
+            res.json({
+                success: true,
+                data: interactionTargetEntity,
+            });
+        } catch (error) {
+            elizaLogger.error("Error fetching interaction targets:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to fetch interaction targets",
+            });
+        }
+    });
+
+    router.post("/v1/agents/:agentId/interaction-targets", async (req, res) => {
+        // Get first agent
+        const agent = agents.values().next().value as AgentRuntime;
+        const agentId = req.params.agentId;
+        const { targetUsernames, platform } = req.body;
+
+        // TODO (lau, Codelight): this code is always getting the first agent so we need to fix it later
+        if (!agent) {
+            res.status(404).json({ error: "Agent not found" });
+            return;
+        }
+
+        // Validate platform
+        // TODO (lau, Codelight): add other platforms
+        if (!["twitter"].includes(platform)) {
+            return res.status(400).json({
+                success: false,
+                message: "Platform must be one of: twitter",
+            });
+        }
+
+        // Validate targetUsernames
+        if (
+            !targetUsernames ||
+            !Array.isArray(targetUsernames) ||
+            !targetUsernames.every((username) => typeof username === "string")
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "targetUsernames is required and must be an array of strings",
+            });
+        }
+
+        try {
+            // Check if target already exists for this platform
+            const existingTarget =
+                await agent.databaseAdapter.getAgentInteractionTargetByAgentId({
+                    agentId: agentId as UUID,
+                });
+
+            let success: boolean;
+            if (existingTarget) {
+                // Update existing target
+                success =
+                    await agent.databaseAdapter.updateAgentInteractionTarget({
+                        agentId: agentId as UUID,
+                        targetUsernames: targetUsernames.join(","),
+                        platform,
+                    });
+            } else {
+                // Create new target
+                success =
+                    await agent.databaseAdapter.createAgentInteractionTarget({
+                        agentId: agentId as UUID,
+                        targetUsernames: targetUsernames.join(","),
+                        platform,
+                    });
+            }
+
+            if (success) {
+                res.json({
+                    success: true,
+                    message: `${existingTarget ? "Updated" : "Created"} interaction target successfully`,
+                });
+            } else {
+                res.status(500).json({
+                    success: false,
+                    message: `Failed to ${existingTarget ? "update" : "create"} interaction target`,
+                });
+            }
+        } catch (error) {
+            elizaLogger.error("Error managing interaction target:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to manage interaction target",
             });
         }
     });
