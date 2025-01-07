@@ -786,10 +786,31 @@ export class CodelightTwitterInteractionClient {
                         "twitter"
                     );
 
-                    const thread = await this.buildConversationThread(
+                    const thread = await buildConversationThread(
                         tweet,
+                        this.client,
                         10
                     );
+
+                    // Create a sanitized version of the thread without circular references
+                    const sanitizedThread = thread.map((tweet) => ({
+                        id: tweet.id,
+                        text: tweet.text,
+                        username: tweet.username,
+                        name: tweet.name,
+                        timestamp: tweet.timestamp,
+                        permanentUrl: tweet.permanentUrl,
+                        conversationId: tweet.conversationId,
+                        inReplyToStatusId: tweet.inReplyToStatusId,
+                        userId: tweet.userId,
+                    }));
+
+                    if (sanitizedThread.length >= 10) {
+                        elizaLogger.log(
+                            "Thread length is greater than 10, skipping"
+                        );
+                        return;
+                    }
 
                     const message = {
                         content: { text: tweet.text },
@@ -823,7 +844,10 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
-    async handleTwitterMentionInteractions(excludeUsernameList: string[]) {
+    async handleTwitterMentionInteractions(
+        targetUsernameList: string[],
+        excludeUsernameList: string[]
+    ) {
         elizaLogger.log("Checking Twitter mentions interactions");
 
         const twitterUsername = this.client.profile.username;
@@ -839,7 +863,9 @@ export class CodelightTwitterInteractionClient {
             ).tweets;
 
             const filteredTweetCandidates = tweetCandidates.filter(
-                (tweet) => !excludeUsernameList.includes(tweet.username)
+                (tweet) =>
+                    !excludeUsernameList.includes(tweet.username) &&
+                    targetUsernameList.includes(tweet.username)
             );
 
             // de-duplicate tweetCandidates with a set
@@ -892,10 +918,31 @@ export class CodelightTwitterInteractionClient {
                         "twitter"
                     );
 
-                    const thread = await this.buildConversationThread(
+                    const thread = await buildConversationThread(
                         tweet,
+                        this.client,
                         10
                     );
+
+                    // Create a sanitized version of the thread without circular references
+                    const sanitizedThread = thread.map((tweet) => ({
+                        id: tweet.id,
+                        text: tweet.text,
+                        username: tweet.username,
+                        name: tweet.name,
+                        timestamp: tweet.timestamp,
+                        permanentUrl: tweet.permanentUrl,
+                        conversationId: tweet.conversationId,
+                        inReplyToStatusId: tweet.inReplyToStatusId,
+                        userId: tweet.userId,
+                    }));
+
+                    if (sanitizedThread.length >= 10) {
+                        elizaLogger.log(
+                            "Thread length is greater than 10, skipping"
+                        );
+                        return;
+                    }
 
                     const message = {
                         content: { text: tweet.text },
@@ -1001,14 +1048,11 @@ export class CodelightTwitterInteractionClient {
                         agentId: this.runtime.agentId,
                     }
                 );
-            const targetTwitterUsernameList =
+            const excludeUsernameList =
                 targetInteractionEntity?.targetUsernames.split(",") || [];
-            const excludeUsernameList = JSON.parse(
-                JSON.stringify(targetTwitterUsernameList)
-            );
 
             // Set the interval to check for mentions
-            this.handleTwitterMentionInteractions(excludeUsernameList);
+            this.handleTwitterMentionInteractions([], excludeUsernameList);
             setTimeout(
                 handleTwitterMentionInteractionsLoop,
                 Number(

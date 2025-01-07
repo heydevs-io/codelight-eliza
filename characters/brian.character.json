@@ -1,6 +1,6 @@
 {
     "name": "Brian AI Agent",
-    "clients": ["twitter"],
+    "clients": ["codelight_twitter"],
     "modelProvider": "openai",
     "settings": {
         "secrets": {},

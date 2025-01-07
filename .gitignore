@@ -5,6 +5,11 @@ node_modules
 .env.production
 .env.local
 .env_main
+.env.test
+.env.brian
+.env.doge
+.env.mew
+.env.decentral-charm
 concatenated-output.ts
 embedding-cache.json
 packages/plugin-buttplug/intiface-engine

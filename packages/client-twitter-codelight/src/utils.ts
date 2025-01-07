@@ -5,6 +5,9 @@ import { stringToUuid } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@ai16z/eliza";
 import { DEFAULT_MAX_TWEET_LENGTH } from "./environment";
+import { Media } from "@ai16z/eliza";
+import fs from "fs";
+import path from "path";
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -36,20 +39,20 @@ export async function buildConversationThread(
     const visited: Set<string> = new Set();
 
     async function processThread(currentTweet: Tweet, depth: number = 0) {
-        elizaLogger.debug("Processing tweet:", {
+        elizaLogger.log("Processing tweet:", {
             id: currentTweet.id,
             inReplyToStatusId: currentTweet.inReplyToStatusId,
             depth: depth,
         });
 
         if (!currentTweet) {
-            elizaLogger.debug("No current tweet found for thread building");
+            elizaLogger.log("No current tweet found for thread building");
             return;
         }
 
         // Stop if we've reached our reply limit
         if (depth >= maxReplies) {
-            elizaLogger.debug("Reached maximum reply depth", depth);
+            elizaLogger.log("Reached maximum reply depth", depth);
             return;
         }
 
@@ -99,14 +102,14 @@ export async function buildConversationThread(
         }
 
         if (visited.has(currentTweet.id)) {
-            elizaLogger.debug("Already visited tweet:", currentTweet.id);
+            elizaLogger.log("Already visited tweet:", currentTweet.id);
             return;
         }
 
         visited.add(currentTweet.id);
         thread.unshift(currentTweet);
 
-        elizaLogger.debug("Current thread state:", {
+        elizaLogger.log("Current thread state:", {
             length: thread.length,
             currentDepth: depth,
             tweetId: currentTweet.id,
@@ -114,7 +117,7 @@ export async function buildConversationThread(
 
         // If there's a parent tweet, fetch and process it
         if (currentTweet.inReplyToStatusId) {
-            elizaLogger.debug(
+            elizaLogger.log(
                 "Fetching parent tweet:",
                 currentTweet.inReplyToStatusId
             );
@@ -124,13 +127,13 @@ export async function buildConversationThread(
                 );
 
                 if (parentTweet) {
-                    elizaLogger.debug("Found parent tweet:", {
+                    elizaLogger.log("Found parent tweet:", {
                         id: parentTweet.id,
                         text: parentTweet.text?.slice(0, 50),
                     });
                     await processThread(parentTweet, depth + 1);
                 } else {
-                    elizaLogger.debug(
+                    elizaLogger.log(
                         "No parent tweet found for:",
                         currentTweet.inReplyToStatusId
                     );
@@ -142,7 +145,7 @@ export async function buildConversationThread(
                 });
             }
         } else {
-            elizaLogger.debug(
+            elizaLogger.log(
                 "Reached end of reply chain at:",
                 currentTweet.id
             );
@@ -151,7 +154,7 @@ export async function buildConversationThread(
 
     await processThread(tweet, 0);
 
-    elizaLogger.debug("Final thread built:", {
+    elizaLogger.log("Final thread built:", {
         totalTweets: thread.length,
         tweetIds: thread.map((t) => ({
             id: t.id,
@@ -160,6 +163,16 @@ export async function buildConversationThread(
     });
 
     return thread;
+}
+
+export function getMediaType(attachment: Media) {
+    if (attachment.contentType?.startsWith("video")) {
+        return "video";
+    } else if (attachment.contentType?.startsWith("image")) {
+        return "image";
+    } else {
+        throw new Error(`Unsupported media type`);
+    }
 }
 
 export async function sendTweet(
@@ -178,11 +191,45 @@ export async function sendTweet(
     let previousTweetId = inReplyTo;
 
     for (const chunk of tweetChunks) {
+        let mediaData: { data: Buffer; mediaType: string }[] | undefined;
+
+        if (content.attachments && content.attachments.length > 0) {
+            mediaData = await Promise.all(
+                content.attachments.map(async (attachment: Media) => {
+                    if (/^(http|https):\/\//.test(attachment.url)) {
+                        // Handle HTTP URLs
+                        const response = await fetch(attachment.url);
+                        if (!response.ok) {
+                            throw new Error(
+                                `Failed to fetch file: ${attachment.url}`
+                            );
+                        }
+                        const mediaBuffer = Buffer.from(
+                            await response.arrayBuffer()
+                        );
+                        const mediaType = getMediaType(attachment);
+                        return { data: mediaBuffer, mediaType };
+                    } else if (fs.existsSync(attachment.url)) {
+                        // Handle local file paths
+                        const mediaBuffer = await fs.promises.readFile(
+                            path.resolve(attachment.url)
+                        );
+                        const mediaType = getMediaType(attachment);
+                        return { data: mediaBuffer, mediaType };
+                    } else {
+                        throw new Error(
+                            `File not found: ${attachment.url}. Make sure the path is correct.`
+                        );
+                    }
+                })
+            );
+        }
         const result = await client.requestQueue.add(
             async () =>
                 await client.twitterClient.sendTweet(
                     chunk.trim(),
-                    previousTweetId
+                    previousTweetId,
+                    mediaData
                 )
         );
         const body = await result.json();

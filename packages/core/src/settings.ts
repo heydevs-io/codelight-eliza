@@ -12,12 +12,16 @@ const NODE_ENV = process.env.NODE_ENV || "development";
  */
 const getEnvFileName = (): string => {
     switch (NODE_ENV) {
+        case "decentral-charm":
+            return "./codelight-production/.env.decentral-charm";
         case "brian":
-            return "./codelight-production/.brian.env";
+            return "./codelight-production/.env.brian";
         case "doge":
-            return "./codelight-production/.doge.env";
+            return "./codelight-production/.env.doge";
         case "mew":
-            return "./codelight-production/.mew.env";
+            return "./codelight-production/.env.mew";
+        case "test":
+            return "./codelight-production/.env.test";
         default:
             return ".env";
     }

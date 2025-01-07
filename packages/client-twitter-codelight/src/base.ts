@@ -817,4 +817,9 @@ export class ClientBase extends EventEmitter {
         //     return obj;
         // });
     }
+
+    async fetchTweetById(id: string): Promise<Tweet> {
+        const tweet = await this.twitterClient.getTweet(id);
+        return tweet;
+    }
 }

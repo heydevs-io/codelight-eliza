@@ -1,7 +1,7 @@
 {
     "name": "Mew-AI Agent",
     "plugins": [],
-    "clients": ["twitter"],
+    "clients": ["codelight_twitter"],
     "modelProvider": "openai",
     "settings": {
         "secrets": {},
