@@ -118,9 +118,24 @@ export function createApiRouter(
         }
     });
 
+    router.get("/v1/agents", async (req, res) => {
+        const agent = agents.values().next().value as AgentRuntime;
+        const agentList = await agent.databaseAdapter.getAgentList();
+
+        if (!agentList) {
+            res.status(404).json({ error: "Agent not found" });
+            return;
+        }
+
+        res.json({
+            success: true,
+            data: agentList,
+        });
+    });
+
     router.get("/v1/agents/:agentId", async (req, res) => {
         const agentId = req.params.agentId;
-        const agent = agents.values().next().value;
+        const agent = agents.values().next().value as AgentRuntime;
 
         const agentInfo = await agent.databaseAdapter.getAccountById(
             agentId as UUID
@@ -234,17 +249,27 @@ export function createApiRouter(
         // Get first agent
         const agent = agents.values().next().value as AgentRuntime;
         const agentId = req.params.agentId;
-
+        const platform = req.query.platform as string;
         // TODO (lau, Codelight): this code is always getting the first agent so we need to fix it later
         if (!agent) {
             res.status(404).json({ error: "Agent not found" });
             return;
         }
 
+        // Validate platform
+        // TODO (lau, Codelight): add other platforms
+        if (!["twitter", "codelight_twitter"].includes(platform)) {
+            return res.status(400).json({
+                success: false,
+                message: "Platform must be one of: twitter, codelight_twitter",
+            });
+        }
+
         try {
             const interactionTargetEntity =
                 await agent.databaseAdapter.getAgentInteractionTargetByAgentId({
                     agentId: agentId as UUID,
+                    platform: platform as "twitter",
                 });
 
             if (!interactionTargetEntity) {
@@ -281,10 +306,10 @@ export function createApiRouter(
 
         // Validate platform
         // TODO (lau, Codelight): add other platforms
-        if (!["twitter"].includes(platform)) {
+        if (!["twitter", "codelight_twitter"].includes(platform)) {
             return res.status(400).json({
                 success: false,
-                message: "Platform must be one of: twitter",
+                message: "Platform must be one of: twitter, codelight_twitter",
             });
         }
 
@@ -306,6 +331,7 @@ export function createApiRouter(
             const existingTarget =
                 await agent.databaseAdapter.getAgentInteractionTargetByAgentId({
                     agentId: agentId as UUID,
+                    platform,
                 });
 
             let success: boolean;

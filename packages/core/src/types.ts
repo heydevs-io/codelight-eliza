@@ -935,7 +935,7 @@ export interface IDatabaseAdapter {
 
     getRelationships(params: { userId: UUID }): Promise<Relationship[]>;
 
-    // Content Store methods
+    // Codelight: Content Store methods
     getContentStore?(params: {
         agentId: UUID;
         targetPlatform?: string;
@@ -954,24 +954,27 @@ export interface IDatabaseAdapter {
 
     deleteContentStore?(id: UUID): Promise<boolean>;
 
-    // Agent Interaction Targets
+    // Codelight: Agent Interaction Targets
     getAgentInteractionTargetByAgentId?(params: {
         agentId: UUID;
+        platform: TargetPlatform;
     }): Promise<AgentInteractionTarget>;
 
     createAgentInteractionTarget?(params: {
         agentId: UUID;
         targetUsernames: string;
-        platform: "twitter" | "telegram" | "discord" | "slack";
+        platform: TargetPlatform;
     }): Promise<boolean>;
 
     updateAgentInteractionTarget?(params: {
         agentId: UUID;
         targetUsernames: string;
-        platform: "twitter" | "telegram" | "discord" | "slack";
+        platform: TargetPlatform;
     }): Promise<boolean>;
 
     deleteAgentInteractionTarget?(params: { id: UUID }): Promise<boolean>;
+
+    getAgentList?(): Promise<Account[]>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1298,7 +1301,7 @@ export interface ContentStore {
     finishedAt?: number;
     status: ContentStatus;
     action: string;
-    targetPlatform: "twitter" | "telegram" | "discord" | "slack";
+    targetPlatform: TargetPlatform;
     resultId?: string;
 }
 
@@ -1307,6 +1310,13 @@ export interface AgentInteractionTarget {
     createdAt: number;
     agentId: UUID;
     targetUsernames: string;
-    platform: "twitter" | "telegram" | "discord" | "slack";
+    platform: TargetPlatform;
     status: "active" | "inactive";
 }
+
+export type TargetPlatform =
+    | "twitter"
+    | "codelight_twitter"
+    | "telegram"
+    | "discord"
+    | "slack";

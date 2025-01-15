@@ -23,6 +23,7 @@ import { Database } from "better-sqlite3";
 import { v4 } from "uuid";
 import { load } from "./sqlite_vec.ts";
 import { sqliteTables } from "./sqliteTables.ts";
+import { TargetPlatform } from "@ai16z/eliza";
 
 export class SqliteDatabaseAdapter
     extends DatabaseAdapter<Database>
@@ -835,18 +836,19 @@ export class SqliteDatabaseAdapter
 
     async getAgentInteractionTargetByAgentId(params: {
         agentId: UUID;
+        platform: TargetPlatform;
     }): Promise<AgentInteractionTarget> {
-        const sql = `SELECT * FROM agent_interaction_targets WHERE agentId = ? LIMIT 1`;
+        const sql = `SELECT * FROM agent_interaction_targets WHERE agentId = ? AND platform = ? LIMIT 1`;
         const target = this.db
             .prepare(sql)
-            .get(params.agentId) as AgentInteractionTarget;
+            .get(params.agentId, params.platform) as AgentInteractionTarget;
         return target;
     }
 
     async createAgentInteractionTarget(params: {
         agentId: UUID;
         targetUsernames: string;
-        platform: "twitter" | "telegram" | "discord" | "slack";
+        platform: TargetPlatform;
     }): Promise<boolean> {
         try {
             const sql = `
@@ -876,7 +878,7 @@ export class SqliteDatabaseAdapter
     async updateAgentInteractionTarget(params: {
         agentId: UUID;
         targetUsernames: string;
-        platform: "twitter" | "telegram" | "discord" | "slack";
+        platform: TargetPlatform;
     }): Promise<boolean> {
         try {
             const sql = `
@@ -915,5 +917,11 @@ export class SqliteDatabaseAdapter
             );
             return false;
         }
+    }
+
+    async getAgentList(): Promise<Account[]> {
+        const sql = "SELECT * FROM accounts";
+        const accounts = this.db.prepare(sql).all() as Account[];
+        return accounts;
     }
 }
