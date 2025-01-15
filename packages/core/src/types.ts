@@ -934,6 +934,47 @@ export interface IDatabaseAdapter {
     }): Promise<Relationship | null>;
 
     getRelationships(params: { userId: UUID }): Promise<Relationship[]>;
+
+    // Codelight: Content Store methods
+    getContentStore?(params: {
+        agentId: UUID;
+        targetPlatform?: string;
+        status?: ContentStatus;
+        limit?: number;
+    }): Promise<ContentStore[]>;
+
+    createContentStore?(
+        content: Omit<ContentStore, "createdAt">
+    ): Promise<boolean>;
+
+    updateContentStore?(
+        id: UUID,
+        updates: Partial<ContentStore>
+    ): Promise<boolean>;
+
+    deleteContentStore?(id: UUID): Promise<boolean>;
+
+    // Codelight: Agent Interaction Targets
+    getAgentInteractionTargetByAgentId?(params: {
+        agentId: UUID;
+        platform: TargetPlatform;
+    }): Promise<AgentInteractionTarget>;
+
+    createAgentInteractionTarget?(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: TargetPlatform;
+    }): Promise<boolean>;
+
+    updateAgentInteractionTarget?(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: TargetPlatform;
+    }): Promise<boolean>;
+
+    deleteAgentInteractionTarget?(params: { id: UUID }): Promise<boolean>;
+
+    getAgentList?(): Promise<Account[]>;
 }
 
 export interface IDatabaseCacheAdapter {
@@ -1239,3 +1280,43 @@ export interface ActionResponse {
 export interface ISlackService extends Service {
     client: any;
 }
+
+export enum ContentStatus {
+    PENDING = "pending",
+    PROCESSING = "processing",
+    COMPLETED = "completed",
+    FAILED = "failed",
+}
+
+export interface ContentStore {
+    id: UUID;
+    createdAt: number;
+    userId: UUID;
+    agentId: UUID;
+    source: "url" | "text";
+    sourceUrl?: string;
+    content: string;
+    metadata: Record<string, any>;
+    priority: number;
+    finishedAt?: number;
+    status: ContentStatus;
+    action: string;
+    targetPlatform: TargetPlatform;
+    resultId?: string;
+}
+
+export interface AgentInteractionTarget {
+    id: UUID;
+    createdAt: number;
+    agentId: UUID;
+    targetUsernames: string;
+    platform: TargetPlatform;
+    status: "active" | "inactive";
+}
+
+export type TargetPlatform =
+    | "twitter"
+    | "codelight_twitter"
+    | "telegram"
+    | "discord"
+    | "slack";
