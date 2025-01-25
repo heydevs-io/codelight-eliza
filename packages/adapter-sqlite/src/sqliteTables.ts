@@ -92,6 +92,40 @@ CREATE TABLE IF NOT EXISTS "cache" (
     PRIMARY KEY ("key", "agentId")
 );
 
+------------------ Note: Start of Codelight tables ------------------
+
+-- Table: content_store
+CREATE TABLE IF NOT EXISTS "content_store" (
+    "id" TEXT PRIMARY KEY,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "userId" TEXT NOT NULL,
+    "agentId" TEXT NOT NULL,
+    "source" TEXT NOT NULL, -- 'url' or 'text'
+    "sourceUrl" TEXT,
+    "content" TEXT NOT NULL,
+    "metadata" TEXT DEFAULT '{}' CHECK(json_valid("metadata")), -- For storing additional context/data
+    "priority" INTEGER DEFAULT 0, -- Higher number = higher priority
+    "finishedAt" TIMESTAMP, -- When the content was actually used
+    "status" TEXT DEFAULT 'pending', -- pending, processing, completed, failed
+    "action" TEXT NOT NULL, -- twitter_post, telegram_message, etc
+    "targetPlatform" TEXT NOT NULL, -- twitter, telegram, discord, slack
+    "resultId" TEXT, -- ID of the resulting action (tweet ID, message ID, etc)
+    FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
+    FOREIGN KEY ("agentId") REFERENCES "accounts"("id")
+);
+
+-- Table: agent_interaction_targets
+CREATE TABLE IF NOT EXISTS "agent_interaction_targets" (
+    "id" TEXT PRIMARY KEY,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "agentId" TEXT NOT NULL,
+    "targetUsernames" TEXT NOT NULL, -- Comma-separated usernames
+    "platform" TEXT NOT NULL DEFAULT 'twitter', -- For future platform extensibility
+    FOREIGN KEY ("agentId") REFERENCES "accounts"("id")
+);
+
+------------------ Note: End of Codelight tables ------------------
+
 -- Index: relationships_id_key
 CREATE UNIQUE INDEX IF NOT EXISTS "relationships_id_key" ON "relationships" ("id");
 

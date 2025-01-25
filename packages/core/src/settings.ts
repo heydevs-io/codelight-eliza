@@ -3,6 +3,32 @@ import fs from "fs";
 import path from "path";
 import elizaLogger from "./logger.ts";
 
+// Add environment type constant
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+/**
+ * Gets the appropriate environment file name based on NODE_ENV
+ * @returns {string} Environment file name (e.g., .env.dev for development)
+ */
+const getEnvFileName = (): string => {
+    switch (NODE_ENV) {
+        case "decentral-charm":
+            return "./codelight-production/.env.decentral-charm";
+        case "brian":
+            return "./codelight-production/.env.brian";
+        case "doge":
+            return "./codelight-production/.env.doge";
+        case "mew":
+            return "./codelight-production/.env.mew";
+        case "test":
+            return "./codelight-production/.env.test";
+        case "scala":
+            return "./codelight-production/.env.scala";
+        default:
+            return ".env";
+    }
+};
+
 elizaLogger.info("Loading embedding settings:", {
     USE_OPENAI_EMBEDDING: process.env.USE_OPENAI_EMBEDDING,
     USE_OLLAMA_EMBEDDING: process.env.USE_OLLAMA_EMBEDDING,
@@ -35,22 +61,26 @@ const isBrowser = (): boolean => {
 };
 
 /**
- * Recursively searches for a .env file starting from the current directory
- * and moving up through parent directories (Node.js only)
+ * Recursively searches for environment files starting from the current directory
  * @param {string} [startDir=process.cwd()] - Starting directory for the search
- * @returns {string|null} Path to the nearest .env file or null if not found
+ * @returns {string|null} Path to the nearest env file or null if not found
  */
 export function findNearestEnvFile(startDir = process.cwd()) {
     if (isBrowser()) return null;
 
     let currentDir = startDir;
+    const envFileName = getEnvFileName();
 
     // Continue searching until we reach the root directory
     while (currentDir !== path.parse(currentDir).root) {
-        const envPath = path.join(currentDir, ".env");
+        const envPath = path.join(currentDir, envFileName);
+        const defaultEnvPath = path.join(currentDir, ".env");
 
+        // Check for specific environment file first, then fallback to default .env
         if (fs.existsSync(envPath)) {
             return envPath;
+        } else if (fs.existsSync(defaultEnvPath)) {
+            return defaultEnvPath;
         }
 
         // Move up to parent directory
@@ -58,8 +88,16 @@ export function findNearestEnvFile(startDir = process.cwd()) {
     }
 
     // Check root directory as well
-    const rootEnvPath = path.join(path.parse(currentDir).root, ".env");
-    return fs.existsSync(rootEnvPath) ? rootEnvPath : null;
+    const rootEnvPath = path.join(path.parse(currentDir).root, envFileName);
+    const rootDefaultEnvPath = path.join(path.parse(currentDir).root, ".env");
+
+    if (fs.existsSync(rootEnvPath)) {
+        return rootEnvPath;
+    } else if (fs.existsSync(rootDefaultEnvPath)) {
+        return rootDefaultEnvPath;
+    }
+
+    return null;
 }
 
 /**

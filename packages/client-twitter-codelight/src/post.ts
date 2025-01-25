@@ -7,6 +7,8 @@ import {
     ModelClass,
     stringToUuid,
     parseBooleanFromText,
+    ContentStatus,
+    UUID,
 } from "@ai16z/eliza";
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base.ts";
@@ -26,9 +28,13 @@ const twitterPostTemplate = `
 
 {{postDirections}}
 
-# Task: Generate a post in the voice and style and perspective of {{agentName}} @{{twitterUserName}}.
-Write a 1-3 sentence post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Do not add commentary or acknowledge this request, just write the post.
-Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements.`;
+# Additional Content to Reference
+{{additionalContent}}
+
+# Task: Generate a very brief post as {{agentName}} @{{twitterUserName}}.
+Write a single short statement about {{topic}} (without directly mentioning {{topic}}) that is {{adjective}}. Keep it extremely concise - aim for 180 characters or less. No questions, no emojis, no hashtags.
+
+Remember: Brevity is essential. Use simple, clear language. One main thought only.`;
 
 /**
  * Truncate text to fit within the Twitter character limit, ensuring it ends at a complete sentence.
@@ -135,6 +141,57 @@ export class CodelightTwitterPostClient {
                 "twitter"
             );
 
+            // Codelight - Get pending content from content store first
+            const pendingContent =
+                await this.runtime.databaseAdapter.getContentStore({
+                    agentId: this.runtime.agentId,
+                    targetPlatform: "twitter",
+                    status: ContentStatus.PENDING,
+                    limit: 1,
+                });
+
+            let pendingContentText = "";
+            let contentStoreId: UUID | undefined;
+
+            if (pendingContent && pendingContent.length > 0) {
+                // Use the highest priority pending content
+                const content = pendingContent[0];
+                contentStoreId = content.id;
+
+                if (content.source === "url") {
+                    const regex =
+                        /^https?:\/\/((?:www|mobile)\.)?(?:twitter\.com|x\.com)\/[^/]+\/status\/\d+/.test(
+                            content.sourceUrl ?? ""
+                        );
+                    if (regex) {
+                        // Get Tweet id from url
+                        const tweetId =
+                            content.sourceUrl.match(/\/status\/(\d+)/)?.[1];
+                        if (tweetId) {
+                            const tweet =
+                                await this.client.twitterClient.getTweet(
+                                    tweetId
+                                );
+                            pendingContentText = tweet?.text
+                                ? tweet?.text + content.content
+                                : content.content;
+                        }
+                    } else {
+                        pendingContentText = content.content;
+                    }
+                } else {
+                    pendingContentText = content.content;
+                }
+
+                // Mark content as processing
+                await this.runtime.databaseAdapter.updateContentStore(
+                    contentStoreId,
+                    {
+                        status: ContentStatus.PROCESSING,
+                    }
+                );
+            }
+
             const topics = this.runtime.character.topics.join(", ");
             const state = await this.runtime.composeState(
                 {
@@ -149,6 +206,9 @@ export class CodelightTwitterPostClient {
                 {
                     twitterUserName: this.client.profile.username,
                     maxTweetLength: this.runtime.getSetting("MAX_TWEET_LENGTH"),
+
+                    // Codelight - additional content from content store for the post
+                    additionalContent: pendingContentText,
                 }
             );
 
@@ -195,6 +255,14 @@ export class CodelightTwitterPostClient {
                 const body = await result.json();
                 if (!body?.data?.create_tweet?.tweet_results?.result) {
                     console.error("Error sending tweet; Bad response:", body);
+
+                    // Codelight - update content store with pending status
+                    await this.runtime.databaseAdapter.updateContentStore(
+                        contentStoreId,
+                        {
+                            status: ContentStatus.PENDING,
+                        }
+                    );
                     return;
                 }
                 const tweetResult = body.data.create_tweet.tweet_results.result;
@@ -252,8 +320,26 @@ export class CodelightTwitterPostClient {
                     embedding: getEmbeddingZeroVector(),
                     createdAt: tweet.timestamp,
                 });
+
+                // Codelight - update content store with tweet id
+                await this.runtime.databaseAdapter.updateContentStore(
+                    contentStoreId,
+                    {
+                        status: ContentStatus.COMPLETED,
+                        finishedAt: Date.now(),
+                        resultId: tweetResult.rest_id,
+                    }
+                );
             } catch (error) {
                 elizaLogger.error("Error sending tweet:", error);
+
+                // Codelight - update content store with error
+                await this.runtime.databaseAdapter.updateContentStore(
+                    contentStoreId,
+                    {
+                        status: ContentStatus.FAILED,
+                    }
+                );
             }
         } catch (error) {
             elizaLogger.error("Error generating new tweet:", error);

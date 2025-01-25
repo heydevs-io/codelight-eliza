@@ -1,7 +1,11 @@
 export * from "./sqliteTables.ts";
 export * from "./sqlite_vec.ts";
 
-import { DatabaseAdapter, IDatabaseCacheAdapter } from "@ai16z/eliza";
+import {
+    DatabaseAdapter,
+    elizaLogger,
+    IDatabaseCacheAdapter,
+} from "@ai16z/eliza";
 import {
     Account,
     Actor,
@@ -11,11 +15,15 @@ import {
     type Memory,
     type Relationship,
     type UUID,
+    type ContentStore,
+    type ContentStatus,
+    AgentInteractionTarget,
 } from "@ai16z/eliza";
 import { Database } from "better-sqlite3";
 import { v4 } from "uuid";
 import { load } from "./sqlite_vec.ts";
 import { sqliteTables } from "./sqliteTables.ts";
+import { TargetPlatform } from "@ai16z/eliza";
 
 export class SqliteDatabaseAdapter
     extends DatabaseAdapter<Database>
@@ -248,8 +256,8 @@ export class SqliteDatabaseAdapter
 
         let sql = `
             SELECT *, vec_distance_L2(embedding, ?) AS similarity
-            FROM memories 
-            WHERE type = ? 
+            FROM memories
+            WHERE type = ?
             AND roomId = ?`;
 
         if (params.unique) {
@@ -340,24 +348,24 @@ export class SqliteDatabaseAdapter
         // First get content text and calculate Levenshtein distance
         const sql = `
             WITH content_text AS (
-                SELECT 
+                SELECT
                     embedding,
                     json_extract(
                         json(content),
                         '$.' || ? || '.' || ?
                     ) as content_text
-                FROM memories 
+                FROM memories
                 WHERE type = ?
                 AND json_extract(
                     json(content),
                     '$.' || ? || '.' || ?
                 ) IS NOT NULL
             )
-            SELECT 
+            SELECT
                 embedding,
                 length(?) + length(content_text) - (
                     length(?) + length(content_text) - (
-                        length(replace(lower(?), lower(content_text), '')) + 
+                        length(replace(lower(?), lower(content_text), '')) +
                         length(replace(lower(content_text), lower(?), ''))
                     ) / 2
                 ) as levenshtein_score
@@ -706,5 +714,214 @@ export class SqliteDatabaseAdapter
             console.log("Error removing cache", error);
             return false;
         }
+    }
+
+    async getContentStore(params: {
+        agentId: UUID;
+        status?: ContentStatus;
+        targetPlatform?: string;
+        limit?: number;
+    }): Promise<ContentStore[]> {
+        let sql = "SELECT * FROM content_store WHERE agentId = ?";
+        const queryParams: any[] = [params.agentId];
+
+        if (params.status) {
+            sql += " AND status = ?";
+            queryParams.push(params.status);
+        }
+
+        if (params.targetPlatform) {
+            sql += " AND targetPlatform = ?";
+            queryParams.push(params.targetPlatform);
+        }
+
+        sql += " ORDER BY priority DESC, createdAt ASC";
+
+        if (params.limit) {
+            sql += " LIMIT ?";
+            queryParams.push(params.limit);
+        }
+
+        const rows = this.db.prepare(sql).all(...queryParams);
+
+        return rows.map((row: any) => ({
+            ...row,
+            metadata: JSON.parse(row.metadata),
+            finishedAt: row.finishedAt ? Number(row.finishedAt) : undefined,
+            createdAt: Number(row.createdAt),
+        }));
+    }
+
+    async createContentStore(
+        content: Omit<ContentStore, "createdAt">
+    ): Promise<boolean> {
+        try {
+            const sql = `
+                INSERT INTO content_store (
+                    id, userId, agentId, source, sourceUrl, content,
+                    metadata, priority, status, action, targetPlatform
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    content.id,
+                    content.userId,
+                    content.agentId,
+                    content.source,
+                    content.sourceUrl || null,
+                    content.content,
+                    JSON.stringify(content.metadata || {}),
+                    content.priority || 0,
+                    content.status,
+                    content.action,
+                    content.targetPlatform
+                );
+
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error creating content store:", error);
+            return false;
+        }
+    }
+
+    async updateContentStore(
+        id: UUID,
+        updates: Partial<ContentStore>
+    ): Promise<boolean> {
+        try {
+            const sets: string[] = [];
+            const values: any[] = [];
+
+            // Build dynamic SET clause
+            Object.entries(updates).forEach(([key, value]) => {
+                if (key === "metadata" && value) {
+                    sets.push(`${key} = ?`);
+                    values.push(JSON.stringify(value));
+                } else if (value !== undefined) {
+                    sets.push(`${key} = ?`);
+                    values.push(value);
+                }
+            });
+
+            if (sets.length === 0) return true;
+
+            const sql = `
+                UPDATE content_store
+                SET ${sets.join(", ")}
+                WHERE id = ?
+            `;
+
+            values.push(id);
+            this.db.prepare(sql).run(...values);
+
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error updating content store:", error);
+            return false;
+        }
+    }
+
+    async deleteContentStore(id: UUID): Promise<boolean> {
+        try {
+            const sql = "DELETE FROM content_store WHERE id = ?";
+            this.db.prepare(sql).run(id);
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error deleting content store:", error);
+            return false;
+        }
+    }
+
+    async getAgentInteractionTargetByAgentId(params: {
+        agentId: UUID;
+        platform: TargetPlatform;
+    }): Promise<AgentInteractionTarget> {
+        const sql = `SELECT * FROM agent_interaction_targets WHERE agentId = ? AND platform = ? LIMIT 1`;
+        const target = this.db
+            .prepare(sql)
+            .get(params.agentId, params.platform) as AgentInteractionTarget;
+        return target;
+    }
+
+    async createAgentInteractionTarget(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: TargetPlatform;
+    }): Promise<boolean> {
+        try {
+            const sql = `
+                INSERT INTO agent_interaction_targets
+                (id, agentId, targetUsernames, platform, createdAt)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    v4(),
+                    params.agentId,
+                    params.targetUsernames,
+                    params.platform
+                );
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error creating agent interaction target:",
+                error
+            );
+            return false;
+        }
+    }
+
+    async updateAgentInteractionTarget(params: {
+        agentId: UUID;
+        targetUsernames: string;
+        platform: TargetPlatform;
+    }): Promise<boolean> {
+        try {
+            const sql = `
+                UPDATE agent_interaction_targets
+                SET targetUsernames = ?, platform = ?
+                WHERE agentId = ? AND platform = ?
+            `;
+
+            this.db
+                .prepare(sql)
+                .run(
+                    params.targetUsernames,
+                    params.platform,
+                    params.agentId,
+                    params.platform
+                );
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error updating agent interaction target:",
+                error
+            );
+            return false;
+        }
+    }
+
+    async deleteAgentInteractionTarget(params: { id: UUID }): Promise<boolean> {
+        try {
+            const sql = `DELETE FROM agent_interaction_targets WHERE id = ?`;
+            this.db.prepare(sql).run(params.id);
+            return true;
+        } catch (error) {
+            elizaLogger.error(
+                "Error deleting agent interaction target:",
+                error
+            );
+            return false;
+        }
+    }
+
+    async getAgentList(): Promise<Account[]> {
+        const sql = "SELECT * FROM accounts";
+        const accounts = this.db.prepare(sql).all() as Account[];
+        return accounts;
     }
 }

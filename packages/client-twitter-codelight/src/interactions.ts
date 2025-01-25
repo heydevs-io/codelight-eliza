@@ -14,6 +14,7 @@ import {
     stringToUuid,
     elizaLogger,
     getEmbeddingZeroVector,
+    UUID,
 } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
@@ -529,7 +530,7 @@ export class CodelightTwitterInteractionClient {
      * ------------------------- Codelight custom code -------------------------
      */
 
-    private async handleTweetV2({
+    async handleTweetV2({
         tweet,
         message,
         thread,
@@ -714,8 +715,11 @@ export class CodelightTwitterInteractionClient {
         }
     }
 
-    async handleTwitterInteractionsV2(username: string) {
-        elizaLogger.log("Checking Twitter interactions");
+    async handleTwitterInteractionsV2(
+        username: string,
+        isCodelightAgent?: boolean
+    ) {
+        elizaLogger.log(`Checking Twitter '${username}' interactions`);
 
         // const twitterUsername = this.client.profile.username;
 
@@ -754,6 +758,19 @@ export class CodelightTwitterInteractionClient {
                         tweet.id + "-" + this.runtime.agentId
                     );
 
+                    // The logic is:
+                    // If the tweet is belongs to a codelight agent
+                    // And the target twitter username is from codelight and is an agent
+                    // So agent respond to another codelight agent's tweet 50% of the time
+                    if (isCodelightAgent && Math.random() < 0.5) {
+                        elizaLogger.log(
+                            "Skipping this tweet for this codelight agent, tweetId: ",
+                            tweet.id
+                        );
+                        await this.markTweetAsResponded(tweet);
+                        continue;
+                    }
+
                     // Check if we've already processed this tweet
                     const existingResponse =
                         await this.runtime.messageManager.getMemoryById(
@@ -785,10 +802,32 @@ export class CodelightTwitterInteractionClient {
                         "twitter"
                     );
 
-                    const thread = await this.buildConversationThread(
+                    const thread = await buildConversationThread(
                         tweet,
+                        this.client,
                         10
                     );
+
+                    // Create a sanitized version of the thread without circular references
+                    const sanitizedThread = thread.map((tweet) => ({
+                        id: tweet.id,
+                        text: tweet.text,
+                        username: tweet.username,
+                        name: tweet.name,
+                        timestamp: tweet.timestamp,
+                        permanentUrl: tweet.permanentUrl,
+                        conversationId: tweet.conversationId,
+                        inReplyToStatusId: tweet.inReplyToStatusId,
+                        userId: tweet.userId,
+                    }));
+
+                    // If the thread is longer than 10 tweets, skip
+                    if (sanitizedThread.length >= 10) {
+                        elizaLogger.log(
+                            "Thread length is greater than 10, skipping"
+                        );
+                        return;
+                    }
 
                     const message = {
                         content: { text: tweet.text },
@@ -811,13 +850,21 @@ export class CodelightTwitterInteractionClient {
             // Save the latest checked tweet ID to the file
             await this.client.cacheLatestCheckedTweetId();
 
-            elizaLogger.log("Finished checking Twitter interactions");
+            elizaLogger.log(
+                `Finished checking Twitter '${username}' interactions`
+            );
         } catch (error) {
-            elizaLogger.error("Error handling Twitter interactions:", error);
+            elizaLogger.error(
+                `Error handling Twitter '${username}' interactions:`,
+                error
+            );
         }
     }
 
-    async handleTwitterMentionInteractions(excludeUsernameList: string[]) {
+    async handleTwitterMentionInteractions(
+        excludeUsernameList: string[],
+        codelightAgentUsernameList: string[]
+    ) {
         elizaLogger.log("Checking Twitter mentions interactions");
 
         const twitterUsername = this.client.profile.username;
@@ -834,10 +881,15 @@ export class CodelightTwitterInteractionClient {
 
             const filteredTweetCandidates = tweetCandidates.filter(
                 (tweet) => !excludeUsernameList.includes(tweet.username)
+                // && targetUsernameList.includes(tweet.username)
             );
 
             // de-duplicate tweetCandidates with a set
             const uniqueTweetCandidates = [...new Set(filteredTweetCandidates)];
+
+            elizaLogger.log(
+                `Processing ${uniqueTweetCandidates.length} mentions tweets`
+            );
 
             // for each tweet candidate, handle the tweet
             for (const tweet of uniqueTweetCandidates) {
@@ -863,6 +915,23 @@ export class CodelightTwitterInteractionClient {
                         );
                         continue;
                     }
+
+                    // The logic is:
+                    // If this is a reply tweet or mention tweet
+                    // And this reply tweet is belongs to a codelight agent
+                    // So agent respond to another codelight agent's tweet 50% of the time
+                    if (
+                        codelightAgentUsernameList.includes(tweet.username) &&
+                        Math.random() < 0.5
+                    ) {
+                        elizaLogger.log(
+                            "Skipping this tweet for this codelight agent, tweetId: ",
+                            tweet.id
+                        );
+                        await this.markTweetAsResponded(tweet);
+                        continue;
+                    }
+
                     elizaLogger.log("New Tweet found", tweet.permanentUrl);
 
                     const roomId = stringToUuid(
@@ -882,10 +951,32 @@ export class CodelightTwitterInteractionClient {
                         "twitter"
                     );
 
-                    const thread = await this.buildConversationThread(
+                    const thread = await buildConversationThread(
                         tweet,
+                        this.client,
                         10
                     );
+
+                    // Create a sanitized version of the thread without circular references
+                    const sanitizedThread = thread.map((tweet) => ({
+                        id: tweet.id,
+                        text: tweet.text,
+                        username: tweet.username,
+                        name: tweet.name,
+                        timestamp: tweet.timestamp,
+                        permanentUrl: tweet.permanentUrl,
+                        conversationId: tweet.conversationId,
+                        inReplyToStatusId: tweet.inReplyToStatusId,
+                        userId: tweet.userId,
+                    }));
+
+                    // If the thread is longer than 10 tweets, skip
+                    if (sanitizedThread.length >= 10) {
+                        elizaLogger.log(
+                            "Thread length is greater than 10, skipping"
+                        );
+                        return;
+                    }
 
                     const message = {
                         content: { text: tweet.text },
@@ -918,10 +1009,89 @@ export class CodelightTwitterInteractionClient {
     }
 
     async startV2() {
-        const godTwitterUsername = "god";
-        const handleTwitterInteractionsLoopV2 = () => {
-            // TODO: handle multiple usernames
-            this.handleTwitterInteractionsV2(godTwitterUsername);
+        // const DEFAULT_TARGET_TWITTER_USERNAME_LIST = [
+        //     "aixbt_agent",
+        //     "dolos_diary",
+        //     "luna_virtuals",
+        //     "vader_ai_",
+        //     "SimulacrumAI",
+        //     "0xHarmonybot",
+        //     "clankeronbase",
+        //     "luminousbase",
+        //     "anoncast_",
+        //     "henlokart",
+        //     "freysa_ai",
+        //     "agent_algo",
+        //     "god",
+        // ];
+
+        // Check if the agent has an interaction target and create one if it doesn't
+        const targetInteractionEntity =
+            await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                {
+                    agentId: this.runtime.agentId,
+                    platform: "twitter",
+                }
+            );
+
+        if (!targetInteractionEntity) {
+            elizaLogger.debug(
+                `No interaction target found for agent ${this.runtime.agentId}`
+            );
+
+            // Create a new interaction target
+            await this.runtime.databaseAdapter.createAgentInteractionTarget({
+                agentId: this.runtime.agentId as UUID,
+                targetUsernames: "",
+                platform: "twitter",
+            });
+        }
+
+        const handleTwitterInteractionsLoopV2 = async () => {
+            // Fetch target usernames for regular Twitter interactions from the database
+            const twitterTargetInteractionEntity =
+                await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                    {
+                        agentId: this.runtime.agentId,
+                        platform: "twitter",
+                    }
+                );
+            const twitterTargetUsernameList =
+                twitterTargetInteractionEntity?.targetUsernames === ""
+                    ? []
+                    : twitterTargetInteractionEntity?.targetUsernames.split(
+                          ","
+                      ) || [];
+
+            // Fetch target usernames for codelight Twitter interactions from the database
+            // This is for codelight agents interacting with other codelight agents
+            const codelightTwitterTargetInteractionEntity =
+                await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                    {
+                        agentId: this.runtime.agentId,
+                        platform: "codelight_twitter",
+                    }
+                );
+            const codelightTwitterTargetUsernameList =
+                codelightTwitterTargetInteractionEntity?.targetUsernames === ""
+                    ? []
+                    : codelightTwitterTargetInteractionEntity?.targetUsernames.split(
+                          ","
+                      ) || [];
+
+            // For each username, handle the interactions
+            for (const username of twitterTargetUsernameList) {
+                await this.handleTwitterInteractionsV2(username, false);
+                await Promise.resolve(setTimeout(() => {}, 5000));
+            }
+
+            // For each codelight agent, handle the interactions
+            for (const username of codelightTwitterTargetUsernameList) {
+                await this.handleTwitterInteractionsV2(username, true);
+                await Promise.resolve(setTimeout(() => {}, 5000));
+            }
+
+            // Set the interval to check for interactions
             setTimeout(
                 handleTwitterInteractionsLoopV2,
                 Number(
@@ -930,9 +1100,28 @@ export class CodelightTwitterInteractionClient {
             );
         };
 
-        const handleTwitterMentionInteractionsLoop = () => {
-            const excludeUsernameList = [godTwitterUsername];
-            this.handleTwitterMentionInteractions(excludeUsernameList);
+        const handleTwitterMentionInteractionsLoop = async () => {
+            // Fetch target usernames for codelight Twitter interactions from the database
+            // This is for codelight agents interacting with other codelight agents
+            const codelightTwitterTargetInteractionEntity =
+                await this.runtime.databaseAdapter.getAgentInteractionTargetByAgentId(
+                    {
+                        agentId: this.runtime.agentId,
+                        platform: "codelight_twitter",
+                    }
+                );
+            const codelightTwitterTargetUsernameList =
+                codelightTwitterTargetInteractionEntity?.targetUsernames === ""
+                    ? []
+                    : codelightTwitterTargetInteractionEntity?.targetUsernames.split(
+                          ","
+                      ) || [];
+
+            // Set the interval to check for mentions
+            this.handleTwitterMentionInteractions(
+                [],
+                codelightTwitterTargetUsernameList
+            );
             setTimeout(
                 handleTwitterMentionInteractionsLoop,
                 Number(
@@ -943,5 +1132,30 @@ export class CodelightTwitterInteractionClient {
 
         handleTwitterInteractionsLoopV2();
         handleTwitterMentionInteractionsLoop();
+    }
+
+    private async markTweetAsResponded(tweet: Tweet) {
+        const memoryId = stringToUuid(tweet.id + "-" + this.runtime.agentId);
+        const roomId = stringToUuid(
+            tweet.conversationId + "-" + this.runtime.agentId
+        );
+
+        await this.runtime.messageManager.createMemory({
+            id: memoryId,
+            userId: stringToUuid(tweet.userId),
+            agentId: stringToUuid(this.runtime.agentId),
+            roomId: roomId,
+            content: {
+                text: tweet.text,
+                url:
+                    tweet.permanentUrl ||
+                    `https://twitter.com/user/status/${tweet.id}`,
+                source: "twitter",
+            },
+            embedding: getEmbeddingZeroVector(),
+            createdAt: Date.now(),
+        });
+
+        elizaLogger.log(`Tweet ${tweet.id} marked as responded`);
     }
 }
