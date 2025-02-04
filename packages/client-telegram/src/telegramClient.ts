@@ -3,6 +3,7 @@ import { message } from 'telegraf/filters';
 import { IAgentRuntime, elizaLogger } from "@ai16z/eliza";
 import { MessageManager } from "./messageManager.ts";
 import { getOrCreateRecommenderInBe } from "./getOrCreateRecommenderInBe.ts";
+import { TelegramPostManager } from "./postManager.ts";
 
 export class TelegramClient {
     private bot: Telegraf<Context>;
@@ -12,6 +13,9 @@ export class TelegramClient {
     private backendToken;
     private tgTrader;
 
+    //* Codelight: declare the post manager
+    private postManager: TelegramPostManager;
+
     constructor(runtime: IAgentRuntime, botToken: string) {
         elizaLogger.log("📱 Constructing new TelegramClient...");
         this.runtime = runtime;
@@ -20,6 +24,9 @@ export class TelegramClient {
         this.backend = runtime.getSetting("BACKEND_URL");
         this.backendToken = runtime.getSetting("BACKEND_TOKEN");
         this.tgTrader = runtime.getSetting("TG_TRADER"); // boolean To Be added to the settings
+
+        //* Codelight: initialize the post manager
+        this.postManager = new TelegramPostManager(this.bot, this.runtime);
         elizaLogger.log("✅ TelegramClient constructor completed");
     }
 
@@ -29,6 +36,9 @@ export class TelegramClient {
             await this.initializeBot();
             this.setupMessageHandlers();
             this.setupShutdownHandlers();
+
+            //* Codelight: start the post manager after the bot is initialized
+            await this.postManager.start();
         } catch (error) {
             elizaLogger.error("❌ Failed to launch Telegram bot:", error);
             throw error;
