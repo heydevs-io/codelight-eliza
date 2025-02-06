@@ -11,9 +11,7 @@
         "zod": "3.23.8"
     },
     "devDependencies": {
-        "env-cmd": "^10.1.0",
-        "tsup": "8.3.5",
-        "tsx": "^4.19.2"
+        "tsup": "8.3.5"
     },
     "scripts": {
         "build": "tsup --format esm --dts",

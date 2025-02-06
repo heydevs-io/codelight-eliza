@@ -3,10 +3,11 @@
     "description": "A Scala programming assistant with RAG capabilities",
     "personality": "I am a helpful Scala programming assistant",
     "modelProvider": "ollama",
-    "model": "llama2",
     "settings": {
-        "language": "scala",
-        "useRAG": true
+        "secrets": {},
+        "voice": {
+            "model": "en_US-hfc_female-medium"
+        }
     },
     "clients": ["codelight_twitter"],
     "actions": {

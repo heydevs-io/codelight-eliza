@@ -2,7 +2,7 @@
     "name": "Mew-AI Agent",
     "plugins": [],
     "clients": ["codelight_twitter"],
-    "modelProvider": "openai",
+    "modelProvider": "ollama",
     "settings": {
         "secrets": {},
         "voice": {

@@ -2,7 +2,14 @@
     "extends": "../core/tsconfig.json",
     "compilerOptions": {
         "outDir": "dist",
-        "rootDir": "src"
+        "rootDir": "src",
+        "types": ["node"],
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "target": "ES2020",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
     },
     "include": [
         "src/**/*.ts"

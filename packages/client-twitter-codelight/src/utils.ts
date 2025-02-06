@@ -76,7 +76,7 @@ export async function buildConversationThread(
 
             await client.runtime.messageManager.createMemory({
                 id: stringToUuid(
-                    currentTweet.id + "-" + client.runtime.agentId
+                    currentTweet.id + "-" + client.runtime.agentId // repeated, need to create a new memoryID
                 ),
                 agentId: client.runtime.agentId,
                 content: {

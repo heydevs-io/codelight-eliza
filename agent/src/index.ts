@@ -60,7 +60,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
-import { codeLightCharacter } from "../codelight.character";
+//import { codeLightCharacter } from "../codelight.character";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -650,8 +650,8 @@ const startAgents = async () => {
 
     let charactersArg = args.characters || args.character;
 
-    // let characters = [defaultCharacter];
-    let characters = [codeLightCharacter];
+    let characters = [defaultCharacter];
+    // let characters = [codeLightCharacter];
 
     if (charactersArg) {
         characters = await loadCharacters(charactersArg);
