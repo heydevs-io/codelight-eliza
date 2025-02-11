@@ -12,7 +12,7 @@ import {
 } from "@ai16z/eliza";
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base.ts";
-
+import { buildConversation_Dify } from "./bot_rag.ts";
 const twitterPostTemplate = `
 # Areas of Expertise
 {{knowledge}}
@@ -159,19 +159,13 @@ export class CodelightTwitterPostClient {
                 contentStoreId = content.id;
 
                 if (content.source === "url") {
-                    const regex =
-                        /^https?:\/\/((?:www|mobile)\.)?(?:twitter\.com|x\.com)\/[^/]+\/status\/\d+/.test(
-                            content.sourceUrl ?? ""
-                        );
+                    const regex = /^https?:\/\/((?:www|mobile)\.)?(?:twitter\.com|x\.com)\/[^/]+\/status\/\d+/.test(
+                        content.sourceUrl ?? ""
+                    );
                     if (regex) {
-                        // Get Tweet id from url
-                        const tweetId =
-                            content.sourceUrl.match(/\/status\/(\d+)/)?.[1];
+                        const tweetId = content.sourceUrl.match(/\/status\/(\d+)/)?.[1];
                         if (tweetId) {
-                            const tweet =
-                                await this.client.twitterClient.getTweet(
-                                    tweetId
-                                );
+                            const tweet = await this.client.twitterClient.getTweet(tweetId);
                             pendingContentText = tweet?.text
                                 ? tweet?.text + content.content
                                 : content.content;
@@ -183,13 +177,9 @@ export class CodelightTwitterPostClient {
                     pendingContentText = content.content;
                 }
 
-                // Mark content as processing
-                await this.runtime.databaseAdapter.updateContentStore(
-                    contentStoreId,
-                    {
-                        status: ContentStatus.PROCESSING,
-                    }
-                );
+                await this.runtime.databaseAdapter.updateContentStore(contentStoreId, {
+                    status: ContentStatus.PROCESSING,
+                });
             }
 
             const topics = this.runtime.character.topics.join(", ");
@@ -220,12 +210,16 @@ export class CodelightTwitterPostClient {
             });
 
             elizaLogger.debug("generate post prompt:\n" + context);
-
+            const topic = "Scala AI Agent";
+            console.log("context is:", context);
             const newTweetContent = await generateText({
                 runtime: this.runtime,
                 context,
                 modelClass: ModelClass.SMALL,
             });
+            const new_conversation = await buildConversation_Dify(topic);
+            //const newTweetContent = new_conversation.text;
+            console.log("newTweetContent is:", newTweetContent);
 
             // Replace \n with proper line breaks and trim excess spaces
             const formattedTweet = newTweetContent
@@ -267,7 +261,7 @@ export class CodelightTwitterPostClient {
                 }
                 const tweetResult = body.data.create_tweet.tweet_results.result;
 
-                const tweet = {
+                let tweet = {           //fix scope of tweet
                     id: tweetResult.rest_id,
                     name: this.client.profile.screenName,
                     username: this.client.profile.username,
@@ -288,6 +282,7 @@ export class CodelightTwitterPostClient {
                     urls: [],
                     videos: [],
                 } as Tweet;
+
 
                 await this.runtime.cacheManager.set(
                     `twitter/${this.client.profile.username}/lastPost`,
@@ -320,6 +315,16 @@ export class CodelightTwitterPostClient {
                     embedding: getEmbeddingZeroVector(),
                     createdAt: tweet.timestamp,
                 });
+
+                // Codelight - create conversation store
+                await this.runtime.databaseAdapter.createConversationStore({
+                    parentId: tweet.id,
+                    conversationId: new_conversation.conversationId,
+                    messageId: new_conversation.messageId,
+                    agentId: this.runtime.agentId,
+                    roomId: roomId,
+                });
+                
 
                 // Codelight - update content store with tweet id
                 await this.runtime.databaseAdapter.updateContentStore(

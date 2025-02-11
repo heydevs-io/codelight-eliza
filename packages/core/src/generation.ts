@@ -72,12 +72,16 @@ export async function generateText({
         modelProvider: runtime.modelProvider,
         model: modelClass,
     });
-
+    ///
+    console.log("degub pass at line 75");
+    ///
     const provider = runtime.modelProvider;
     const endpoint =
         runtime.character.modelEndpointOverride || models[provider].endpoint;
     let model = models[provider].model[modelClass];
-
+    ///
+    console.log("degub pass at line 77");
+    ///
     // allow character.json settings => secrets to override models
     // FIXME: add MODEL_MEDIUM support
     switch (provider) {
@@ -153,6 +157,9 @@ export async function generateText({
     const max_response_length = models[provider].settings.maxOutputTokens;
 
     const apiKey = runtime.token;
+    ///
+    console.log("degub pass at line 160");
+    ///
 
     try {
         elizaLogger.debug(
@@ -166,7 +173,9 @@ export async function generateText({
         elizaLogger.debug(
             `Using provider: ${provider}, model: ${model}, temperature: ${temperature}, max response length: ${max_response_length}`
         );
-
+        ///
+        console.log("degub pass at line 176");
+        ///
         switch (provider) {
             // OPENAI & LLAMACLOUD shared same structure.
             case ModelProviderName.OPENAI:
@@ -562,6 +571,7 @@ export async function generateText({
                 throw new Error(errorMessage);
             }
         }
+        console.log("response is:", response);
 
         return response;
     } catch (error) {

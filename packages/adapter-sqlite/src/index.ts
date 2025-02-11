@@ -924,4 +924,50 @@ export class SqliteDatabaseAdapter
         const accounts = this.db.prepare(sql).all() as Account[];
         return accounts;
     }
+
+    async createConversationStore(params: {
+        parentId: string;
+        conversationId: string;
+        messageId: string;
+        agentId: string;
+        roomId: string;
+    }): Promise<boolean> {
+        try {
+            const sql = `
+                INSERT INTO conversation_store (id, parentId, conversationId, messageId, agentId, roomId)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+            this.db
+                .prepare(sql)
+                .run(
+                    params.parentId, 
+                    params.conversationId, 
+                    params.messageId, 
+                    params.agentId, 
+                    params.roomId
+                );
+            return true;
+        } catch (error) {
+            elizaLogger.error("Error creating conversation store:", error);
+            return false;
+        }
+    }
+
+    async getConversationStore_ID(params: {
+        parentId: string;
+    }): Promise<any> {
+        const sql = `SELECT * FROM conversation_store WHERE id = ?`;
+        const conversation = this.db.prepare(sql).get(params.parentId) as any;
+        return conversation;
+    }
+
+    async updateConversationStore(params: {
+        parentId: string;
+        conversationId: string;
+        messageId: string;
+    }): Promise<boolean> {
+        const sql = `UPDATE conversation_store SET conversationId = ?, messageId = ? WHERE id = ?`;
+        this.db.prepare(sql).run(params.conversationId, params.messageId, params.parentId);
+        return true;
+    }
 }

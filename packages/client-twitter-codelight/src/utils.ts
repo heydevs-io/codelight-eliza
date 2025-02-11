@@ -117,6 +117,7 @@ export async function buildConversationThread(
 
         // If there's a parent tweet, fetch and process it
         if (currentTweet.inReplyToStatusId) {
+            
             elizaLogger.log(
                 "Fetching parent tweet:",
                 currentTweet.inReplyToStatusId

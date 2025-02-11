@@ -18,29 +18,23 @@ importers:
         specifier: 0.10.0
         version: 0.10.0(bufferutil@4.0.9)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.24.1)
       '@deepgram/sdk':
-        specifier: ^3.10.0
+        specifier: ^3.9.0
         version: 3.10.0(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      '@langchain/openai':
-        specifier: ^0.3.17
-        version: 0.3.17(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@langchain/pinecone':
-        specifier: ^0.1.3
-        version: 0.1.3(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))
-      '@pinecone-database/pinecone':
-        specifier: ^1.1.3
-        version: 1.1.3
+      '@nestjs/axios':
+        specifier: ^4.0.0
+        version: 4.0.0(@nestjs/common@10.4.6(class-transformer@0.5.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(axios@1.7.9)(rxjs@7.8.1)
       '@vitest/eslint-plugin':
         specifier: 1.0.1
         version: 1.0.1(@typescript-eslint/utils@8.16.0(eslint@9.16.0(jiti@2.4.1))(typescript@5.6.3))(eslint@9.16.0(jiti@2.4.1))(typescript@5.6.3)(vitest@2.1.5(@types/node@22.13.1)(jsdom@25.0.1(bufferutil@4.0.9)(canvas@2.11.2(encoding@0.1.13))(utf-8-validate@5.0.10))(terser@5.37.0))
       amqplib:
         specifier: 0.10.5
         version: 0.10.5
+      axios:
+        specifier: ^1.7.9
+        version: 1.7.9
       csv-parse:
         specifier: 5.6.0
         version: 5.6.0
-      langchain:
-        specifier: 0.3.6
-        version: 0.3.6(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ollama-ai-provider:
         specifier: 0.16.1
         version: 0.16.1(zod@3.24.1)
@@ -109,7 +103,7 @@ importers:
         specifier: 2.1.5
         version: 2.1.5(@types/node@22.13.1)(jsdom@25.0.1(bufferutil@4.0.9)(canvas@2.11.2(encoding@0.1.13))(utf-8-validate@5.0.10))(terser@5.37.0)
       zx:
-        specifier: ^8.3.2
+        specifier: ^8.2.4
         version: 8.3.2
 
   agent:
@@ -2999,9 +2993,6 @@ packages:
   '@cfworker/json-schema@4.0.3':
     resolution: {integrity: sha512-ZykIcDTVv5UNmKWSTLAs3VukO6NDJkkSKxrgUTDPBkAlORVT3H9n5DbRjRl8xIotklscHdbLIa0b9+y3mQq73g==}
 
-  '@cfworker/json-schema@4.1.1':
-    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
-
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
 
@@ -4888,18 +4879,6 @@ packages:
     peerDependencies:
       '@langchain/core': '>=0.2.26 <0.4.0'
 
-  '@langchain/openai@0.3.17':
-    resolution: {integrity: sha512-uw4po32OKptVjq+CYHrumgbfh4NuD7LqyE+ZgqY9I/LrLc6bHLMc+sisHmI17vgek0K/yqtarI0alPJbzrwyag==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@langchain/core': '>=0.3.29 <0.4.0'
-
-  '@langchain/pinecone@0.1.3':
-    resolution: {integrity: sha512-1DPZvkg3Ve1TJSUfmpf7GF2SvRyg8cLjKjffkuW/C3oPONti2a9W7Q+F18YgBf1Swk0bPJ7A1EtMvlsU+NOQmw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@langchain/core': '>=0.2.21 <0.4.0'
-
   '@langchain/textsplitters@0.1.0':
     resolution: {integrity: sha512-djI4uw9rlkAb5iMhtLED+xJebDdAG935AdP4eRTB02R7OB/act55Bj9wsskhZsvuyQRpO4O1wQOp85s6T6GWmw==}
     engines: {node: '>=18'}
@@ -5244,6 +5223,13 @@ packages:
       '@nestjs/common': ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
       axios: ^1.3.1
       rxjs: ^6.0.0 || ^7.0.0
+
+  '@nestjs/axios@4.0.0':
+    resolution: {integrity: sha512-1cB+Jyltu/uUPNQrpUimRHEQHrnQrpLzVj6dU3dgn6iDDDdahr10TgHFGTmw5VuJ9GzKZsCLDL78VSwJAs/9JQ==}
+    peerDependencies:
+      '@nestjs/common': ^10.0.0 || ^11.0.0
+      axios: ^1.3.1
+      rxjs: ^7.0.0
 
   '@nestjs/common@10.4.6':
     resolution: {integrity: sha512-KkezkZvU9poWaNq4L+lNvx+386hpOxPJkfXBBeSMrcqBOx8kVr36TGN2uYkF4Ta4zNu1KbCjmZbc0rhHSg296g==}
@@ -6042,14 +6028,6 @@ packages:
   '@pinata/sdk@2.1.0':
     resolution: {integrity: sha512-hkS0tcKtsjf9xhsEBs2Nbey5s+Db7x5rlOH9TaWHBXkJ7IwwOs2xnEDigNaxAHKjYAwcw+m2hzpO5QgOfeF7Zw==}
     deprecated: Please install the new IPFS SDK at pinata-web3. More information at https://docs.pinata.cloud/web3/sdk
-
-  '@pinecone-database/pinecone@1.1.3':
-    resolution: {integrity: sha512-bGldvvoAr4agVZ2ql4RZesXIDjMLjnuqNmKYfMQoVO3UFRYeuO9z+1WJodvanGIPY2iGh1w9yz0jDAkBiT53qw==}
-    engines: {node: '>=14.0.0'}
-
-  '@pinecone-database/pinecone@4.1.0':
-    resolution: {integrity: sha512-WoVsbvmCgvZfjm/nCasJXuQ/tw0es5BpedLHvRScAm6xJ/nL07s3B0TrsM8m8rACTiUgbdYsdLY1W6cEBhS9xA==}
-    engines: {node: '>=18.0.0'}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -6893,9 +6871,6 @@ packages:
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
-
-  '@sinclair/typebox@0.29.6':
-    resolution: {integrity: sha512-aX5IFYWlMa7tQ8xZr3b2gtVReCvg7f3LEhjir/JAjX2bJCMVJA5tIPv30wTD4KDfcwMd7DDYY3hFDeGmOgtrZQ==}
 
   '@sinclair/typebox@0.32.35':
     resolution: {integrity: sha512-Ul3YyOTU++to8cgNkttakC0dWvpERr6RYoHO2W47DLbFvrwBDJUY31B1sImH6JZSYc4Kt4PyHtoPNu+vL2r2dA==}
@@ -8607,10 +8582,6 @@ packages:
 
   agentkeepalive@4.5.0:
     resolution: {integrity: sha512-5GG/5IbQQpC9FpkRGsSvZI5QYeSCzlJHdpBQntCsuTOxhKD8lqKhrleg2Yi7yvMIf82Ycmmqln9U8V9qwEiJew==}
-    engines: {node: '>= 8.0.0'}
-
-  agentkeepalive@4.6.0:
-    resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
     engines: {node: '>= 8.0.0'}
 
   aggregate-error@3.1.0:
@@ -13256,9 +13227,6 @@ packages:
   js-tiktoken@1.0.15:
     resolution: {integrity: sha512-65ruOWWXDEZHHbAo7EjOcNxOGasQKbL4Fq3jEr2xsCqSsoOo6VVSqzWQb6PRIqypFSDcma4jO90YP0w5X8qVXQ==}
 
-  js-tiktoken@1.0.18:
-    resolution: {integrity: sha512-hFYx4xYf6URgcttcGvGuOBJhTxPYZ2R5eIesqCaNRJmYH8sNmsfTeWg4yu//7u1VD/qIUkgKJTpGom9oHXmB4g==}
-
   js-tokens@3.0.2:
     resolution: {integrity: sha512-RjTcuD4xjtthQkaWH7dFlH85L+QaVtSoOyGdZ3g6HFhS9dFNDfLyqgm2NFe2X6cQpeFmt0452FJjFG5UameExg==}
 
@@ -13520,14 +13488,6 @@ packages:
 
   langsmith@0.2.13:
     resolution: {integrity: sha512-16EOM5nhU6GlMCKGm5sgBIAKOKzS2d30qcDZmF21kSLZJiUhUNTROwvYdqgZLrGfIIzmSMJHCKA7RFd5qf50uw==}
-    peerDependencies:
-      openai: '*'
-    peerDependenciesMeta:
-      openai:
-        optional: true
-
-  langsmith@0.2.15:
-    resolution: {integrity: sha512-homtJU41iitqIZVuuLW7iarCzD4f39KcfP9RTBWav9jifhrsDa1Ez89Ejr+4qi72iuBu8Y5xykchsGVgiEZ93w==}
     peerDependencies:
       openai: '*'
     peerDependenciesMeta:
@@ -14927,18 +14887,6 @@ packages:
     peerDependencies:
       zod: ^3.23.8
     peerDependenciesMeta:
-      zod:
-        optional: true
-
-  openai@4.83.0:
-    resolution: {integrity: sha512-fmTsqud0uTtRKsPC7L8Lu55dkaTwYucqncDHzVvO64DKOpNTuiYwjbR/nVgpapXuYy8xSnhQQPUm+3jQaxICgw==}
-    hasBin: true
-    peerDependencies:
-      ws: ^8.18.0
-      zod: ^3.23.8
-    peerDependenciesMeta:
-      ws:
-        optional: true
       zod:
         optional: true
 
@@ -21463,8 +21411,6 @@ snapshots:
 
   '@cfworker/json-schema@4.0.3': {}
 
-  '@cfworker/json-schema@4.1.1': {}
-
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:
       '@chevrotain/gast': 11.0.3
@@ -24150,23 +24096,6 @@ snapshots:
     transitivePeerDependencies:
       - openai
 
-  '@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))':
-    dependencies:
-      '@cfworker/json-schema': 4.1.1
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.18
-      langsmith: 0.2.15(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.24.1
-      zod-to-json-schema: 3.24.1(zod@3.24.1)
-    transitivePeerDependencies:
-      - openai
-
   '@langchain/openai@0.3.14(@langchain/core@0.3.24(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)':
     dependencies:
       '@langchain/core': 0.3.24(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))
@@ -24177,33 +24106,10 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/openai@0.3.17(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@langchain/core': 0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      js-tiktoken: 1.0.18
-      openai: 4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)
-      zod: 3.24.1
-      zod-to-json-schema: 3.24.1(zod@3.24.1)
-    transitivePeerDependencies:
-      - encoding
-      - ws
-
-  '@langchain/pinecone@0.1.3(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))':
-    dependencies:
-      '@langchain/core': 0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      '@pinecone-database/pinecone': 4.1.0
-      flat: 5.0.2
-      uuid: 10.0.0
-
   '@langchain/textsplitters@0.1.0(@langchain/core@0.3.24(openai@4.73.0(encoding@0.1.13)(zod@3.23.8)))':
     dependencies:
       '@langchain/core': 0.3.24(openai@4.73.0(encoding@0.1.13)(zod@3.23.8))
       js-tiktoken: 1.0.15
-
-  '@langchain/textsplitters@0.1.0(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))':
-    dependencies:
-      '@langchain/core': 0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      js-tiktoken: 1.0.18
 
   '@leichtgewicht/ip-codec@2.0.5': {}
 
@@ -25002,10 +24908,26 @@ snapshots:
       axios: 1.7.7
       rxjs: 7.8.1
 
+  '@nestjs/axios@4.0.0(@nestjs/common@10.4.6(class-transformer@0.5.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(axios@1.7.9)(rxjs@7.8.1)':
+    dependencies:
+      '@nestjs/common': 10.4.6(class-transformer@0.5.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
+      axios: 1.7.9
+      rxjs: 7.8.1
+
   '@nestjs/common@10.4.6(class-transformer@0.5.1)(reflect-metadata@0.1.13)(rxjs@7.8.1)':
     dependencies:
       iterare: 1.2.1
       reflect-metadata: 0.1.13
+      rxjs: 7.8.1
+      tslib: 2.7.0
+      uid: 2.0.2
+    optionalDependencies:
+      class-transformer: 0.5.1
+
+  '@nestjs/common@10.4.6(class-transformer@0.5.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)':
+    dependencies:
+      iterare: 1.2.1
+      reflect-metadata: 0.2.2
       rxjs: 7.8.1
       tslib: 2.7.0
       uid: 2.0.2
@@ -26065,15 +25987,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@pinecone-database/pinecone@1.1.3':
-    dependencies:
-      '@sinclair/typebox': 0.29.6
-      ajv: 8.17.1
-      cross-fetch: 3.2.0(encoding@0.1.13)
-      encoding: 0.1.13
-
-  '@pinecone-database/pinecone@4.1.0': {}
-
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
@@ -26943,8 +26856,6 @@ snapshots:
   '@simplewebauthn/typescript-types@7.4.0': {}
 
   '@sinclair/typebox@0.27.8': {}
-
-  '@sinclair/typebox@0.29.6': {}
 
   '@sinclair/typebox@0.32.35': {}
 
@@ -29419,10 +29330,6 @@ snapshots:
       twitter-api-v2: 1.18.2
 
   agentkeepalive@4.5.0:
-    dependencies:
-      humanize-ms: 1.2.1
-
-  agentkeepalive@4.6.0:
     dependencies:
       humanize-ms: 1.2.1
 
@@ -32343,6 +32250,7 @@ snapshots:
   encoding@0.1.13:
     dependencies:
       iconv-lite: 0.6.3
+    optional: true
 
   end-of-stream@1.4.4:
     dependencies:
@@ -35681,10 +35589,6 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
 
-  js-tiktoken@1.0.18:
-    dependencies:
-      base64-js: 1.5.1
-
   js-tokens@3.0.2: {}
 
   js-tokens@4.0.0: {}
@@ -35966,29 +35870,6 @@ snapshots:
       - encoding
       - openai
 
-  langchain@0.3.6(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
-    dependencies:
-      '@langchain/core': 0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      '@langchain/openai': 0.3.17(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@langchain/textsplitters': 0.1.0(@langchain/core@0.3.24(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))
-      js-tiktoken: 1.0.18
-      js-yaml: 4.1.0
-      jsonpointer: 5.0.1
-      langsmith: 0.2.15(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1))
-      openapi-types: 12.1.3
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      yaml: 2.7.0
-      zod: 3.24.1
-      zod-to-json-schema: 3.24.1(zod@3.24.1)
-    optionalDependencies:
-      axios: 1.7.9
-      handlebars: 4.7.8
-    transitivePeerDependencies:
-      - encoding
-      - openai
-      - ws
-
   langium@3.0.0:
     dependencies:
       chevrotain: 11.0.3
@@ -36007,17 +35888,6 @@ snapshots:
       uuid: 10.0.0
     optionalDependencies:
       openai: 4.73.0(encoding@0.1.13)(zod@3.23.8)
-
-  langsmith@0.2.15(openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.7.1
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)
 
   latest-version@7.0.0:
     dependencies:
@@ -38072,21 +37942,6 @@ snapshots:
       node-fetch: 2.7.0(encoding@0.1.13)
     optionalDependencies:
       zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-
-  openai@4.83.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1):
-    dependencies:
-      '@types/node': 18.19.75
-      '@types/node-fetch': 2.6.12
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      ws: 8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      zod: 3.24.1
     transitivePeerDependencies:
       - encoding
 
@@ -43714,13 +43569,10 @@ snapshots:
     dependencies:
       zod: 3.23.8
 
-  zod-to-json-schema@3.24.1(zod@3.24.1):
-    dependencies:
-      zod: 3.24.1
-
   zod@3.23.8: {}
 
-  zod@3.24.1: {}
+  zod@3.24.1:
+    optional: true
 
   zwitch@1.0.5: {}
 

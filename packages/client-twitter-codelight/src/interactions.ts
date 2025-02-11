@@ -18,7 +18,8 @@ import {
 } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
-import { callDifyAI } from './bot_rag';
+import { callDifyAI } from "./bot_rag";
+
 export const twitterMessageHandlerTemplate =
     `
 # Areas of Expertise
@@ -108,9 +109,9 @@ export class CodelightTwitterInteractionClient {
     //     handleTwitterInteractionsLoop();
     // }
 
-    /**
-     * @deprecated - for Codelight use-case, use the @handleTwitterInteractionsV2 below
-     */
+    // /**
+    //  * @deprecated - for Codelight use-case, use the @handleTwitterInteractionsV2 below
+    //  */
     // async handleTwitterInteractions() {
     //     elizaLogger.log("Checking Twitter interactions");
 
@@ -394,7 +395,7 @@ export class CodelightTwitterInteractionClient {
 //     }
 
     async buildConversationThread(
-        tweet: Tweet,
+        tweet,
         maxReplies: number = 10
     ): Promise<Tweet[]> {
         const thread: Tweet[] = [];
@@ -487,11 +488,16 @@ export class CodelightTwitterInteractionClient {
                     );
 
                     if (parentTweet) {
+                        // Codelight - build conversation
+                        // currentTweet.conversationId_Dify = parentTweet.conversationId_Dify;
+                        // currentTweet.messageId_Dify = parentTweet.messageId_Dify;
+                        // End of Codelight
                         elizaLogger.log("Found parent tweet:", {
                             id: parentTweet.id,
                             text: parentTweet.text?.slice(0, 50),
                         });
                         await processThread(parentTweet, depth + 1);
+
                     } else {
                         elizaLogger.log(
                             "No parent tweet found for:",
@@ -530,7 +536,7 @@ export class CodelightTwitterInteractionClient {
      * ------------------------- Codelight custom code -------------------------
      */
 
-    async handleTweetV2({
+    private async handleTweetV2({
         tweet,
         message,
         thread,
@@ -539,6 +545,7 @@ export class CodelightTwitterInteractionClient {
         message: Memory;
         thread: Tweet[];
     }) {
+        //console.log("tweet_conversationId_Dify:", tweet.conversationId_Dify);
         if (tweet.userId === this.client.profile.id) {
             // console.log("skipping tweet from bot itself", tweet.id);
             // Skip processing if the tweet is from the bot itself
@@ -573,8 +580,10 @@ export class CodelightTwitterInteractionClient {
             )
             .join("\n\n");
 
-        elizaLogger.debug("formattedConversation: ", formattedConversation);
-
+        // Prepare chat history
+        const conversationThread = await buildConversationThread(tweet, this.client);
+        const chatHistory = conversationThread.map(t => t.text).join('\n');
+        console.log("chatHistory:", chatHistory);
         let state = await this.runtime.composeState(message, {
             twitterClient: this.client.twitterClient,
             twitterUserName: this.runtime.getSetting("TWITTER_USERNAME"),
@@ -613,87 +622,29 @@ export class CodelightTwitterInteractionClient {
             this.client.saveRequestMessage(message, state);
         }
 
-        const context = this.createContext();
-        elizaLogger.debug("Interactions prompt:\n" + context);
-        console.log("context", context);
-        // const response = await generateMessageResponse({
-        //     runtime: this.runtime,
-        //     context,
-        //     modelClass: ModelClass.LARGE,
+        // TODO: Codelight - re-implement this
+        // const shouldRespondContext = composeContext({
+        //     state,
+        //     template:
+        //         this.runtime.character.templates
+        //             ?.twitterShouldRespondTemplate ||
+        //         this.runtime.character?.templates?.shouldRespondTemplate ||
+        //         twitterShouldRespondTemplate,
         // });
-        // console.log("response", response);
-        const responseText = await callDifyAI(context);
-        console.log("response", responseText);
-        const removeQuotes = (str: string) =>
-            str.replace(/^['"](.*)['"]$/, "$1");
 
-        const stringId = stringToUuid(tweet.id + "-" + this.runtime.agentId);
+        // const shouldRespond = await generateShouldRespond({
+        //     runtime: this.runtime,
+        //     context: shouldRespondContext,
+        //     modelClass: ModelClass.MEDIUM,
+        // });
 
-        let action = "RESPOND"; // Default action
-        if (responseText.includes("ignore")) {
-            action = "IGNORE";
-        } else if (responseText.includes("stop")) {
-            action = "STOP";
-        }
+        // // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {
+        // if (shouldRespond !== "RESPOND") {
+        //     elizaLogger.log("Not responding to message");
+        //     return { text: "Response Decision:", action: shouldRespond };
+        // }
 
-        if (responseText) {
-            try {
-                const callback: HandlerCallback = async (response: Content) => {
-                    const memories = await sendTweet(
-                        this.client,
-                        { text: responseText },
-                        message.roomId,
-                        this.runtime.getSetting("TWITTER_USERNAME"),
-                        tweet.id
-                    );
-                    return memories;
-                };
-
-                //const responseMessages = await callback({ text: responseText });
-
-                // state = (await this.runtime.updateRecentMessageState(
-                //     state
-                // )) as State;
-
-                // for (const responseMessage of responseMessages) {
-                //     if (
-                //         responseMessage ===
-                //         responseMessages[responseMessages.length - 1]
-                //     ) {
-                //         responseMessage.content.action = response.action;
-                //     } else {
-                //         responseMessage.content.action = "CONTINUE";
-                //     }
-                //     await this.runtime.messageManager.createMemory(
-                //         responseMessage
-                //     );
-                // }
-
-                // await this.runtime.evaluate(message, state);
-
-                // await this.runtime.processActions(
-                //     message,
-                //     responseMessages,
-                //     state
-                // );
-
-                // const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${responseText}`;
-
-                // await this.runtime.cacheManager.set(
-                //     `twitter/tweet_generation_${tweet.id}.txt`,
-                //     responseInfo
-                // );
-                // await wait();
-                const responseMessages = await callback({ text: responseText, action });
-                responseMessages.content.action = action; // Set the action
-            } catch (error) {
-                elizaLogger.error(`Error sending response tweet: ${error}`);
-            }
-        }
-    }
-
-    private createContext() {
-        return composeContext({
+        const context = composeContext({
             state,
             template:
                 this.runtime.character.templates
@@ -701,6 +652,71 @@ export class CodelightTwitterInteractionClient {
                 this.runtime.character?.templates?.messageHandlerTemplate ||
                 twitterMessageHandlerTemplate,
         });
+
+        elizaLogger.debug("Interactions prompt:\n" + context);
+        //console.log("context:", context);
+        console.log("tweet:", tweet);
+        //const response = await callDifyAI(tweet);
+        const response = {
+            answer: "Hello"
+        }
+       //const responseText = "Hello";
+        // Ensure responseText is a valid string
+        if (response.answer) {
+            const removeQuotes = (str: string) =>
+                str.replace(/^['"](.*)['"]$/, "$1");
+
+            const cleanedResponseText = removeQuotes(response.answer);
+
+            const callback: HandlerCallback = async (responseText: string) => {
+                const memories = await sendTweet(
+                    this.client,
+                    { text: responseText }, // Wrap responseText in an object with a text property
+                    message.roomId,
+                    this.runtime.getSetting("TWITTER_USERNAME"),
+                    tweet.id
+                );
+                return memories;
+            };
+
+            const responseMessages = await callback(cleanedResponseText);
+
+            state = (await this.runtime.updateRecentMessageState(
+                state
+            )) as State;
+
+            for (const responseMessage of responseMessages) {
+                if (
+                    responseMessage ===
+                    responseMessages[responseMessages.length - 1]
+                ) {
+                    responseMessage.content.action = "RESPOND"; // Default to "RESPOND"
+                } else {
+                    responseMessage.content.action = "CONTINUE";
+                }
+                await this.runtime.messageManager.createMemory(
+                    responseMessage
+                );
+            }
+
+            await this.runtime.evaluate(message, state);
+
+            await this.runtime.processActions(
+                message,
+                responseMessages,
+                state
+            );
+
+            const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${cleanedResponseText}`;
+
+            await this.runtime.cacheManager.set(
+                `twitter/tweet_generation_${tweet.id}.txt`,
+                responseInfo
+            );
+            await wait();
+        } else {
+            elizaLogger.log("No valid response from callDifyAI");
+        }
     }
 
     async handleTwitterInteractionsV2(
@@ -717,7 +733,6 @@ export class CodelightTwitterInteractionClient {
                     username,
                     20 // TODO: not sure it works
                 );
-
             // // Check for mentions
             // const tweetCandidates = (
             //     await this.client.fetchSearchTweets(
@@ -890,13 +905,13 @@ export class CodelightTwitterInteractionClient {
                     const tweetId = stringToUuid(
                         tweet.id + "-" + this.runtime.agentId
                     );
-                   // console.log("tweetId", tweetId);
+
                     // Check if we've already processed this tweet
                     // const existingResponse =
                     //     await this.runtime.messageManager.getMemoryById(
                     //         tweetId
                     //     );
-                    // console.log("existingResponse", existingResponse);
+
                     // if (existingResponse) {
                     //     elizaLogger.log(
                     //         `Already responded to tweet ${tweet.id}, skipping`

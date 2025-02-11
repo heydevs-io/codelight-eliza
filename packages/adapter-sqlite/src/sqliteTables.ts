@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS "memories" (
     "content" TEXT NOT NULL,
     "embedding" BLOB NOT NULL, -- TODO: EMBEDDING ARRAY, CONVERT TO BEST FORMAT FOR SQLITE-VSS (JSON?)
     "userId" TEXT,
-    "roomId" TEXT,
+    "roomId" TEXT,     
     "agentId" TEXT,
     "unique" INTEGER DEFAULT 1 NOT NULL,
     FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
@@ -124,6 +124,20 @@ CREATE TABLE IF NOT EXISTS "agent_interaction_targets" (
     FOREIGN KEY ("agentId") REFERENCES "accounts"("id")
 );
 
+-- Table: conversation_store
+CREATE TABLE IF NOT EXISTS "conversation_store" (
+    "id" TEXT PRIMARY KEY,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "conversationId" TEXT NOT NULL,
+    "messageId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "agentId" TEXT NOT NULL,
+    "roomId" TEXT NOT NULL,
+    FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
+    FOREIGN KEY ("agentId") REFERENCES "accounts"("id"),
+    FOREIGN KEY ("roomId") REFERENCES "rooms"("id")
+);
+
 ------------------ Note: End of Codelight tables ------------------
 
 -- Index: relationships_id_key
@@ -136,3 +150,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS "memories_id_key" ON "memories" ("id");
 CREATE UNIQUE INDEX IF NOT EXISTS "participants_id_key" ON "participants" ("id");
 
 COMMIT;`;
+

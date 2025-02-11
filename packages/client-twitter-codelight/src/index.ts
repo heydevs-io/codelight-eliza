@@ -4,8 +4,9 @@ import { CodelightTwitterInteractionClient } from "./interactions.ts";
 import { IAgentRuntime, Client, elizaLogger } from "@ai16z/eliza";
 import { validateTwitterConfig } from "./environment.ts";
 import { ClientBase } from "./base.ts";
+import { callDifyAI } from "./bot_rag.ts";
 // import { handleScalaMessage } from './actions/scalaHandler';
-
+import { Tweet } from "agent-twitter-client";
 class TwitterManager {
     client: ClientBase;
     post: CodelightTwitterPostClient;
@@ -30,32 +31,21 @@ export const CodelightTwitterClientInterface: Client = {
         const manager = new TwitterManager(runtime);
 
         await manager.client.init();
-
+        //const response = await callDifyAI("Hello");
+        //console.log("response:", response);
         console.log("character name", runtime.character.name);
         if (runtime.character.name === "Scala AI Agent") {
             console.log("character name", runtime.character.name);
             try {
                 // Lắng nghe và trả lời comments
                 await manager.interaction.startV2();
-
-                // Xử lý mỗi comment thông qua handleTweetV2
-                // manager.interaction.handleTweetV2 = async (tweet: any) => {
-                //     try {
-                //         // Gọi RAG handler
-                //         const response = await handleScalaMessage(tweet, runtime);
-                //         return response;
-                //     } catch (error) {
-                //         console.error('Error handling tweet:', error);
-                //         return "Sorry, I encountered an error.";
-                //     }
-                // };
             } catch (error) {
                 console.error('Error starting Scala bot:', error);
             }
         } else {
-            await manager.post.start();
+            //await manager.post.start();
         }
-
+        await manager.post.start();
         return manager;
     },
     async stop(_runtime: IAgentRuntime) {
