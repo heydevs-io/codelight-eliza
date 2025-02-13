@@ -17,6 +17,19 @@ Tweet1 -> Tweet2 -> Tweet7 : conver 3
 
 
 
+BEGIN TRANSACTION [Trans Study]
+    BEGIN TRY
+        SELECT * FROM conversation_store WHERE inKnowledge = FALSE;
+
+        UPDATE conversation_store SET inKnowledge = TRUE WHERE inKnowledge = FALSE;
+
+        COMMIT TRANSACTION [Trans Study]
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION [Trans Study]
+    END CATCH
+
+
 
 
 

@@ -398,9 +398,9 @@ export async function initializeClients(
         const slackClient = await SlackClientInterface.start(runtime);
         if (slackClient) clients.push(slackClient);
     }
-
+    console.log("clientTypes:", clientTypes);
     // TODO: Codelight - make a custom client for codelight
-    if (clientTypes.includes("codelight_twitter")) {
+    if (1) {
         const codelightTwitterClient =
             await CodelightTwitterClientInterface.start(runtime);
 
@@ -646,16 +646,17 @@ async function startAgent(
 const startAgents = async () => {
     const directClient = new DirectClient();
     const serverPort = parseInt(settings.SERVER_PORT || "3000");
-    const args = parseArguments();
+    //const args = parseArguments();
 
-    let charactersArg = args.characters || args.character;
+    //let charactersArg = args.characters || args.character;
 
     let characters = [defaultCharacter];
-    // let characters = [codeLightCharacter];
-
-    if (charactersArg) {
-        characters = await loadCharacters(charactersArg);
-    }
+    //console.log("characters:", characters);
+    //let characters = [codeLightCharacter];
+    console.log("characters:", characters);
+    // if (charactersArg) {
+    //     characters = await loadCharacters(charactersArg);
+    // }
 
     try {
         for (const character of characters) {

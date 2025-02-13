@@ -5,6 +5,7 @@ import {
     DatabaseAdapter,
     elizaLogger,
     IDatabaseCacheAdapter,
+    stringToUuid,
 } from "@ai16z/eliza";
 import {
     Account,
@@ -929,23 +930,31 @@ export class SqliteDatabaseAdapter
         parentId: string;
         conversationId: string;
         messageId: string;
-        agentId: string;
+        agentId: UUID;
         roomId: string;
     }): Promise<boolean> {
         try {
+            //console.log("debug pass line 936");
+            //console.log("params.parentId is:", params.parentId || "NULL","StringToUuid:", stringToUuid(params.parentId));
+            //console.log("params.conversationId is:", params.conversationId || "NULL","StringToUuid:", stringToUuid(params.conversationId));
+            //console.log("params.messageId is:", params.messageId || "NULL","StringToUuid:", stringToUuid(params.messageId));
+            //console.log("params.agentId is:", params.agentId || "NULL","StringToUuid:", stringToUuid(params.agentId));
+            //console.log("params.roomId is:", params.roomId || "NULL","StringToUuid:", stringToUuid(params.roomId));
             const sql = `
-                INSERT INTO conversation_store (id, parentId, conversationId, messageId, agentId, roomId)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO conversation_store (id, conversationId, messageId, agentId, roomId, createdAt, inKnowledge)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, FALSE)
             `;
+            //console.log("debug pass line 939");
             this.db
                 .prepare(sql)
                 .run(
-                    params.parentId, 
-                    params.conversationId, 
-                    params.messageId, 
-                    params.agentId, 
-                    params.roomId
+                    params.parentId,
+                    params.conversationId,
+                    params.messageId,
+                    stringToUuid(params.agentId),
+                    stringToUuid(params.roomId)
                 );
+            //console.log("debug pass line 951");
             return true;
         } catch (error) {
             elizaLogger.error("Error creating conversation store:", error);
@@ -956,8 +965,12 @@ export class SqliteDatabaseAdapter
     async getConversationStore_ID(params: {
         parentId: string;
     }): Promise<any> {
+        //console.log("debug pass line 968");
+        //console.log("params.parentId:", params.parentId);
         const sql = `SELECT * FROM conversation_store WHERE id = ?`;
-        const conversation = this.db.prepare(sql).get(params.parentId) as any;
+        //console.log("debug pass line 970");
+        const conversation = this.db.prepare(sql).get(params.parentId);
+        //console.log("conversation:", conversation);
         return conversation;
     }
 
@@ -968,6 +981,35 @@ export class SqliteDatabaseAdapter
     }): Promise<boolean> {
         const sql = `UPDATE conversation_store SET conversationId = ?, messageId = ? WHERE id = ?`;
         this.db.prepare(sql).run(params.conversationId, params.messageId, params.parentId);
+        return true;
+    }
+
+    async studyConversationStore(): Promise<any[]> {
+        const sqlSelect = `SELECT * FROM conversation_store WHERE inKnowledge = FALSE`;
+        const sqlUpdate = `UPDATE conversation_store SET inKnowledge = TRUE WHERE inKnowledge = FALSE`;
+        try {
+            this.db.exec("BEGIN TRANSACTION");
+
+            // Select records
+            const records = this.db.prepare(sqlSelect).all();
+
+            // Update records
+            this.db.prepare(sqlUpdate).run();
+
+            this.db.exec("COMMIT");
+
+            return records;
+        } catch (error) {
+            this.db.exec("ROLLBACK");
+            elizaLogger.error("Error in Study_ConversationStore transaction:", error);
+            return [];
+        }
+    }
+    async updateKnowledgeConversationStore(params: {
+        parentId: string;
+    }): Promise<boolean> {
+        const sql = `UPDATE conversation_store SET inKnowledge = FALSE WHERE id = ?`;
+        this.db.prepare(sql).run(params.parentId);
         return true;
     }
 }

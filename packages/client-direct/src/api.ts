@@ -2,8 +2,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { v4 } from "uuid";
-
 import {
+
     AgentRuntime,
     ContentStatus,
     elizaLogger,
@@ -12,6 +12,9 @@ import {
 } from "@ai16z/eliza";
 
 import { REST, Routes } from "discord.js";
+import { getConversationDify} from "../../../packages/client-twitter-codelight/src/bot_rag";
+import fs from 'fs';
+import path from 'path';
 
 export function createApiRouter(
     agents: Map<string, AgentRuntime>,
@@ -291,7 +294,61 @@ export function createApiRouter(
             });
         }
     });
+    router.post("/setKnowledge", async (req, res) => {
+        const { parentId } = req.body;
+        console.log("parentId", parentId);
+        const agent = agents.values().next().value as AgentRuntime;
+        const success = await agent.databaseAdapter.updateKnowledgeConversationStore({ parentId });
+        res.json({ success });
+    });
+    router.get("/study", async (req, res) => {
+        console.log("studying");
+        const agent = agents.values().next().value as AgentRuntime;
 
+        const records = await agent.databaseAdapter.studyConversationStore();
+        console.log("records", records);
+        let fileContent = "Conversations:\n\n";
+        for (const record of records) {
+            console.log("record", record.conversationId);
+            const conversation = await getConversationDify(record.conversationId);
+
+            // Assuming getConversationDify returns the conversation in the format you provided
+            const data = conversation.data;
+            for (let i = data.length - 1; i >= 0; i--) {
+                const item = data[i];
+                fileContent += `Conversation ID: ${item.conversation_id}\n`;
+                fileContent += `Query: ${item.query}\n`;
+                fileContent += `Answer: ${item.answer}\n\n`;
+            }
+        }
+
+        // Define the file path
+        const filePath = path.join(__dirname, 'conversations.txt');
+
+        // Write the content to a .txt file
+        fs.writeFile(filePath, fileContent, async (err) => {
+            if (err) {
+                console.error("Error writing to file", err);
+                return res.status(500).json({ error: "Failed to write to file" });
+            }
+            console.log("Conversations saved to conversations.txt");
+
+            // try {
+            //     // Upload the file
+            //     const fileId = await uploadFile(filePath);
+            //     console.log('File uploaded successfully, file ID:', fileId);
+
+            //     // Add the document to the dataset
+            //     await addDocumentToDataset(fileId);
+            //     console.log('Document added to dataset successfully');
+
+            //     res.json({ message: "Conversations saved and document added to dataset", data: records });
+            // } catch (error) {
+            //     console.error('Error during file upload or document addition:', error);
+            //     res.status(500).json({ error: "Failed to upload file or add document to dataset" });
+            // }
+        });
+    });
     router.post("/v1/agents/:agentId/interaction-targets", async (req, res) => {
         // Get first agent
         const agent = agents.values().next().value as AgentRuntime;

@@ -86,7 +86,6 @@ export class CodelightTwitterPostClient {
                     this.runtime.getSetting("TWITTER_USERNAME") +
                     "/lastPost"
             );
-
             const lastPostTimestamp = lastPost?.timestamp ?? 0;
             const minMinutes =
                 parseInt(this.runtime.getSetting("POST_INTERVAL_MIN")) || 90;
@@ -96,7 +95,7 @@ export class CodelightTwitterPostClient {
                 Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) +
                 minMinutes;
             const delay = randomMinutes * 60 * 1000;
-
+            //const delay = 0;
             if (Date.now() > lastPostTimestamp + delay) {
                 await this.generateNewTweet();
             }
@@ -129,7 +128,6 @@ export class CodelightTwitterPostClient {
 
     private async generateNewTweet() {
         elizaLogger.log("Generating new tweet");
-
         try {
             const roomId = stringToUuid(
                 "twitter_generate_room-" + this.client.profile.username
@@ -210,19 +208,18 @@ export class CodelightTwitterPostClient {
             });
 
             elizaLogger.debug("generate post prompt:\n" + context);
-            const topic = "Scala AI Agent";
-            console.log("context is:", context);
-            const newTweetContent = await generateText({
-                runtime: this.runtime,
-                context,
-                modelClass: ModelClass.SMALL,
-            });
-            const new_conversation = await buildConversation_Dify(topic);
+            // const newTweetContent = await generateText({
+            //     runtime: this.runtime,
+            //     context,
+            //     modelClass: ModelClass.SMALL,
+            // });
+            const new_conversation = await buildConversation_Dify();
             //const newTweetContent = new_conversation.text;
-            console.log("newTweetContent is:", newTweetContent);
+            //console.log("newTweetContent is:", new_conversation.text);
+            //console.log("new_conversation id: ", new_conversation.conversationId, "messageId: ", new_conversation.messageId);
 
             // Replace \n with proper line breaks and trim excess spaces
-            const formattedTweet = newTweetContent
+            const formattedTweet = new_conversation.text
                 .replaceAll(/\\n/g, "\n")
                 .trim();
 
@@ -307,7 +304,7 @@ export class CodelightTwitterPostClient {
                     userId: this.runtime.agentId,
                     agentId: this.runtime.agentId,
                     content: {
-                        text: newTweetContent.trim(),
+                        text: new_conversation.text,
                         url: tweet.permanentUrl,
                         source: "twitter",
                     },
@@ -315,7 +312,7 @@ export class CodelightTwitterPostClient {
                     embedding: getEmbeddingZeroVector(),
                     createdAt: tweet.timestamp,
                 });
-
+                console.log("debug pass line 305");
                 // Codelight - create conversation store
                 await this.runtime.databaseAdapter.createConversationStore({
                     parentId: tweet.id,
@@ -324,7 +321,7 @@ export class CodelightTwitterPostClient {
                     agentId: this.runtime.agentId,
                     roomId: roomId,
                 });
-                
+                //console.log("conversationStore is:", conversationStore);
 
                 // Codelight - update content store with tweet id
                 await this.runtime.databaseAdapter.updateContentStore(

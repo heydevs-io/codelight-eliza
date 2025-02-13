@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS "memories" (
     "content" TEXT NOT NULL,
     "embedding" BLOB NOT NULL, -- TODO: EMBEDDING ARRAY, CONVERT TO BEST FORMAT FOR SQLITE-VSS (JSON?)
     "userId" TEXT,
-    "roomId" TEXT,     
+    "roomId" TEXT,
     "agentId" TEXT,
     "unique" INTEGER DEFAULT 1 NOT NULL,
     FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
@@ -130,12 +130,9 @@ CREATE TABLE IF NOT EXISTS "conversation_store" (
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "conversationId" TEXT NOT NULL,
     "messageId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
     "agentId" TEXT NOT NULL,
     "roomId" TEXT NOT NULL,
-    FOREIGN KEY ("userId") REFERENCES "accounts"("id"),
-    FOREIGN KEY ("agentId") REFERENCES "accounts"("id"),
-    FOREIGN KEY ("roomId") REFERENCES "rooms"("id")
+    "inKnowledge" BOOLEAN DEFAULT FALSE
 );
 
 ------------------ Note: End of Codelight tables ------------------

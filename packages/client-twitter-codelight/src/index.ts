@@ -27,24 +27,24 @@ export const CodelightTwitterClientInterface: Client = {
         await validateTwitterConfig(runtime);
 
         elizaLogger.log("Twitter client started");
-        console.log("runtime", runtime);
         const manager = new TwitterManager(runtime);
 
         await manager.client.init();
         //const response = await callDifyAI("Hello");
         //console.log("response:", response);
-        console.log("character name", runtime.character.name);
-        if (runtime.character.name === "Scala AI Agent") {
-            console.log("character name", runtime.character.name);
-            try {
-                // Lắng nghe và trả lời comments
-                await manager.interaction.startV2();
-            } catch (error) {
-                console.error('Error starting Scala bot:', error);
-            }
-        } else {
-            //await manager.post.start();
-        }
+        // console.log("character name", runtime.character.name);
+        // if (runtime.character.name === "Scala AI Agent") {
+        //     console.log("character name", runtime.character.name);
+        //     try {
+        //         // Lắng nghe và trả lời comments
+        //         await manager.interaction.startV2();
+        //     } catch (error) {
+        //         console.error('Error starting Scala bot:', error);
+        //     }
+        // } else {
+        //     await manager.post.start();
+        // }
+        await manager.interaction.startV2();
         await manager.post.start();
         return manager;
     },
